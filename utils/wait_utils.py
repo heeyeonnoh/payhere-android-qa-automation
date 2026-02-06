@@ -3,7 +3,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 DEFAULT_TIMEOUT = 10
 
-def wait_for_visible(driver, by, value, timeout=10):
+def wait_for_visible(driver, by, value, timeout=DEFAULT_TIMEOUT):
     return WebDriverWait(driver, timeout).until(
         EC.visibility_of_element_located((by, value))
     )
@@ -13,7 +13,7 @@ def wait_for_presence(driver, locator, timeout=DEFAULT_TIMEOUT):
         EC.presence_of_element_located(locator)
     )
 
-def wait_for_clickable(driver, by, value, timeout=10):
+def wait_for_clickable(driver, by, value, timeout=DEFAULT_TIMEOUT):
     return WebDriverWait(driver, timeout).until(
         EC.element_to_be_clickable((by, value))
     )
