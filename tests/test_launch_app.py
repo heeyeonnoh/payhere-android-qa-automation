@@ -4,7 +4,7 @@ import time
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from driver.appium_driver import create_android_driver
+from ..driver.appium_driver import create_android_driver
 
 
 def test_attached_app():
