@@ -31,19 +31,21 @@ class PaymentFlow:
         self.page.select_under_50k_product()
         self.page.click_pay_button()
         self.page.select_cash_payment()
+        self.page.click_cash_complete_button()
         self.page.click_confirm_button()
 
     def cash_50k(self):
         self.page.select_50k_product()
         self.page.click_pay_button()
         self.page.select_cash_payment()
+        self.page.click_cash_complete_button()
         self.page.click_confirm_button()
 
     def cash_over_50k(self):
         self.page.select_over_50k_product()
         self.page.click_pay_button()
         self.page.select_cash_payment()
-        # 현금은 서명 없음
+        self.page.click_cash_complete_button()
         self.page.click_confirm_button()
 
     # 기존 메서드 (호환성)

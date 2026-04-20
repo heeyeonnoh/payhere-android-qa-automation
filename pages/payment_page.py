@@ -27,6 +27,9 @@ class PaymentPage:
     # 서명 (5만원 초과)
     SIGN_IN_SELLER_APP = (AppiumBy.ACCESSIBILITY_ID, "셀러앱에서 서명")
 
+    # 현금 결제 완료 버튼
+    CASH_COMPLETE_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "결제 완료")
+
     # 결제 완료 확인 버튼
     CONFIRM_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "확인")
 
@@ -83,6 +86,10 @@ class PaymentPage:
 
         # 결제 버튼 클릭
         wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON).click()
+
+    def click_cash_complete_button(self):
+        """현금 결제 완료 버튼 클릭"""
+        wait_for_visible(self.driver, *self.CASH_COMPLETE_BUTTON).click()
 
     def click_confirm_button(self):
         wait_for_visible(self.driver, *self.CONFIRM_BUTTON).click()
