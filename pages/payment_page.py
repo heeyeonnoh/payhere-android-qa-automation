@@ -3,29 +3,21 @@ from utils.wait_utils import wait_for_visible
 
 
 class PaymentPage:
-    def __init__(self, driver):
-        self.driver = driver
-
-    PRODUCT_UNDER_50K = (
-        AppiumBy.ANDROID_UIAUTOMATOR,
-        'new UiSelector().text("5만원 미만 x1")'
+    UNDER_50K_PRODUCT = (
+        AppiumBy.ACCESSIBILITY_ID,
+        "5만원 미만, 0, 1,000원"
     )
 
-    PAY_BUTTON = (
-        AppiumBy.ANDROID_UIAUTOMATOR,
-        'new UiSelector().text("결제")'
-    )
-
-    CARD_PAYMENT_BUTTON = (
+    CARD_PAYMENT = (
         AppiumBy.ACCESSIBILITY_ID,
         "카드 결제"
     )
 
-    def select_under_50k_product(self):
-        wait_for_visible(self.driver, *self.PRODUCT_UNDER_50K).click()
+    def __init__(self, driver):
+        self.driver = driver
 
-    def click_pay_button(self):
-        wait_for_visible(self.driver, *self.PAY_BUTTON).click()
+    def select_under_50k_product(self):
+        wait_for_visible(self.driver, *self.UNDER_50K_PRODUCT).click()
 
     def select_card_payment(self):
-        wait_for_visible(self.driver, *self.CARD_PAYMENT_BUTTON).click()
+        wait_for_visible(self.driver, *self.CARD_PAYMENT).click()
