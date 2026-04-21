@@ -113,6 +113,33 @@ python3 -m pytest tests/test_cash_payment.py -v
 
 ---
 
+## 자동 스케줄 실행 (crontab)
+
+매일 정해진 시간에 자동으로 테스트를 실행하려면 crontab을 등록합니다.
+
+```bash
+cd payhere-android-qa-automation
+SCRIPT="$(pwd)/run_scheduled.sh"
+LOG="$(pwd)/cron.log"
+(crontab -l 2>/dev/null; echo "0 9 * * * $SCRIPT >> $LOG 2>&1"; echo "0 13 * * * $SCRIPT >> $LOG 2>&1") | crontab -
+```
+
+위 명령은 **매일 오전 9시 / 오후 1시**에 결제+환불 전체 테스트를 실행하고 Slack으로 결과를 전송합니다.
+
+> **주의:** 맥이 절전 상태면 실행되지 않습니다. 시스템 설정 → 배터리 → 절전 방지를 켜두세요.
+
+등록 확인:
+```bash
+crontab -l
+```
+
+실행 로그 확인:
+```bash
+cat cron.log
+```
+
+---
+
 ## Allure 리포트
 
 테스트 실행 후 로컬에서 리포트 확인:
