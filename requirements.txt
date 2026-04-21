@@ -2,3 +2,5 @@ Appium-Python-Client
 selenium
 pytest
 python-dotenv
+allure-pytest
+ghp-import

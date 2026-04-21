@@ -1,11 +1,47 @@
 import pytest
 import time
+import subprocess
+import sys
+import os
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from driver.appium_driver import create_android_driver
 from flows.product_flow import ProductFlow
 from utils.slack_notifier import send_test_results
+
+REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _get_pages_url():
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True, text=True, cwd=REPO_DIR
+        )
+        url = result.stdout.strip()
+        # https://github.com/owner/repo.git → https://owner.github.io/repo/
+        url = url.replace("https://github.com/", "").replace(".git", "")
+        owner, repo = url.split("/")
+        return f"https://{owner}.github.io/{repo}/"
+    except Exception:
+        return None
+
+
+def _deploy_allure_report():
+    try:
+        subprocess.run(
+            ["allure", "generate", "allure-results", "--clean", "-o", "allure-report"],
+            check=True, capture_output=True, cwd=REPO_DIR
+        )
+        subprocess.run(
+            [sys.executable, "-m", "ghp_import", "-n", "-p", "-f", "allure-report"],
+            check=True, capture_output=True, cwd=REPO_DIR
+        )
+        return _get_pages_url()
+    except Exception as e:
+        print(f"Allure 배포 실패: {e}")
+        return None
 
 
 def close_any_popup(driver):
@@ -75,5 +111,6 @@ def pytest_sessionfinish(session, exitstatus):
     r = pytest._qa_results
     duration = time.time() - r["start"]
     if session.config.getoption("--slack"):
-        send_test_results(r["passed"], r["failed"], r["error"], duration, r["failures"])
+        report_url = _deploy_allure_report()
+        send_test_results(r["passed"], r["failed"], r["error"], duration, r["failures"], report_url)
     del pytest._qa_results
