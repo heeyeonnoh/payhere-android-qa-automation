@@ -1,0 +1,3 @@
+ATTACHED OK
+PACKAGE: in.payhere.prd
+ACTIVITY: in.payhere.MainActivity
