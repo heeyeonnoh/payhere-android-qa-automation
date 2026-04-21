@@ -9,13 +9,17 @@ from utils.slack_notifier import send_test_results
 
 
 def close_any_popup(driver):
-    """팝업이 있으면 닫기"""
-    try:
-        confirm = driver.find_element(AppiumBy.ACCESSIBILITY_ID, "확인")
-        confirm.click()
-        time.sleep(0.5)
-    except:
-        pass
+    """팝업/모달이 있으면 확인 버튼으로 닫기"""
+    for locator in [
+        (AppiumBy.ACCESSIBILITY_ID, "확인"),
+        (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("확인")'),
+    ]:
+        try:
+            driver.find_element(*locator).click()
+            time.sleep(0.5)
+            return
+        except Exception:
+            pass
 
 
 @pytest.fixture
@@ -34,8 +38,19 @@ def driver():
 def driver_at_appium_category(driver):
     """appium 카테고리 화면에서 시작하는 fixture"""
     close_any_popup(driver)
-    ProductFlow(driver).go_to_appium_category()
+    try:
+        ProductFlow(driver).go_to_appium_category()
+    except Exception:
+        # 결제 내역 등 하위 화면에 있는 경우 뒤로가기 후 재시도
+        driver.back()
+        time.sleep(0.5)
+        close_any_popup(driver)
+        ProductFlow(driver).go_to_appium_category()
     return driver
+
+
+def pytest_addoption(parser):
+    parser.addoption("--slack", action="store_true", default=False, help="테스트 결과를 Slack으로 전송")
 
 
 def pytest_runtest_logreport(report):
@@ -59,5 +74,6 @@ def pytest_sessionfinish(session, exitstatus):
         return
     r = pytest._qa_results
     duration = time.time() - r["start"]
-    send_test_results(r["passed"], r["failed"], r["error"], duration, r["failures"])
+    if session.config.getoption("--slack"):
+        send_test_results(r["passed"], r["failed"], r["error"], duration, r["failures"])
     del pytest._qa_results
