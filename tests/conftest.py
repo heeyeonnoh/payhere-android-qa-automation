@@ -3,6 +3,7 @@ import time
 import subprocess
 import sys
 import os
+from datetime import datetime
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -38,6 +39,14 @@ def _deploy_allure_report():
             [sys.executable, "-m", "ghp_import", "-n", "-p", "-f", "allure-report"],
             check=True, capture_output=True, cwd=REPO_DIR
         )
+        # allure-results를 main 브랜치에 커밋 & 푸시
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        subprocess.run(["git", "add", "allure-results/"], cwd=REPO_DIR)
+        subprocess.run(
+            ["git", "commit", "-m", f"test: Allure 결과 저장 ({timestamp})"],
+            cwd=REPO_DIR, capture_output=True
+        )
+        subprocess.run(["git", "push", "origin", "main"], cwd=REPO_DIR, capture_output=True)
         return _get_pages_url()
     except Exception as e:
         print(f"Allure 배포 실패: {e}")

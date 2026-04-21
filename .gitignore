@@ -7,5 +7,4 @@ venv/
 .vscode/
 .DS_Store
 .venv/
-allure-results/
 allure-report/
