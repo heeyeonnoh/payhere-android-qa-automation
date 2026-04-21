@@ -70,7 +70,7 @@ class RefundPage:
 
     def click_refund_success_confirm(self):
         """환불(취소) 완료 모달의 확인 버튼 클릭"""
-        time.sleep(2)
+        time.sleep(15)  # 카드 취소 처리 완료까지 대기 (~10초 소요)
         self.driver.tap([self.REFUND_SUCCESS_CONFIRM_COORDS])
         time.sleep(0.5)
 
