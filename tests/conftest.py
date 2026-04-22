@@ -3,6 +3,7 @@ import time
 import subprocess
 import sys
 import os
+import shutil
 from datetime import datetime
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
@@ -35,11 +36,18 @@ def _deploy_allure_report():
             ["allure", "generate", "allure-results", "--clean", "-o", "allure-report"],
             check=True, capture_output=True, cwd=REPO_DIR
         )
+        # 생성된 리포트의 history를 allure-results에 복사 → 다음 실행 시 트렌드 유지
+        history_src = os.path.join(REPO_DIR, "allure-report", "history")
+        history_dst = os.path.join(REPO_DIR, "allure-results", "history")
+        if os.path.exists(history_src):
+            if os.path.exists(history_dst):
+                shutil.rmtree(history_dst)
+            shutil.copytree(history_src, history_dst)
         subprocess.run(
             [sys.executable, "-m", "ghp_import", "-n", "-p", "-f", "allure-report"],
             check=True, capture_output=True, cwd=REPO_DIR
         )
-        # allure-results를 main 브랜치에 커밋 & 푸시
+        # allure-results(+history)를 main 브랜치에 커밋 & 푸시
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         subprocess.run(["git", "add", "allure-results/"], cwd=REPO_DIR)
         subprocess.run(
@@ -72,7 +80,7 @@ def driver():
     """테스트 전: 드라이버 생성 / 테스트 후: 드라이버 종료"""
     driver = create_android_driver()
     close_any_popup(driver)
-    time.sleep(1)
+    time.sleep(3)
 
     yield driver
 
