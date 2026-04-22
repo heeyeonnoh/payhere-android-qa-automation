@@ -9,7 +9,7 @@ load_dotenv()
 WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
 
 
-def send_test_results(passed: int, failed: int, error: int, duration: float, failures: list[str], report_url: str = None, unrefunded: list[str] = None):
+def send_test_results(passed: int, failed: int, error: int, duration: float, failures: list[str], report_url: str = None, auto_refunded: list[str] = None, still_unrefunded: list[str] = None):
     total = passed + failed + error
     status = "SUCCESS" if failed == 0 and error == 0 else "FAILURE"
 
@@ -26,14 +26,17 @@ def send_test_results(passed: int, failed: int, error: int, duration: float, fai
         for name in failures:
             lines.append(f"  • {name}")
 
-    if unrefunded is None:
-        lines.append("\n:question: 환불 상태 확인 실패")
-    elif len(unrefunded) == 0:
-        lines.append("\n:white_check_mark: 모든 거래 환불 완료")
-    else:
-        lines.append(f"\n:rotating_light: 미환불 거래 {len(unrefunded)}건:")
-        for item in unrefunded:
+    if auto_refunded:
+        lines.append(f"\n:arrows_counterclockwise: 자동 환불 완료 {len(auto_refunded)}건:")
+        for item in auto_refunded:
             lines.append(f"  • {item}")
+
+    if still_unrefunded:
+        lines.append(f"\n:rotating_light: 미환불 거래 {len(still_unrefunded)}건 (수동 확인 필요):")
+        for item in still_unrefunded:
+            lines.append(f"  • {item}")
+    elif auto_refunded is not None:
+        lines.append("\n:white_check_mark: 모든 거래 환불 완료")
 
     if report_url:
         lines.append(f"\n:bar_chart: <{report_url}|Allure 리포트 보기>")

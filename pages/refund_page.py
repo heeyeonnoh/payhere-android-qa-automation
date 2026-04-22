@@ -32,8 +32,14 @@ class RefundPage:
         self.driver = driver
 
     def go_to_more_tab(self):
-        time.sleep(3)
-        wait_for_visible(self.driver, *self.MORE_TAB, timeout=20).click()
+        time.sleep(2)
+        # 결제 완료 모달의 "확인" 버튼이 남아있으면 클릭
+        try:
+            self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, "확인").click()
+            time.sleep(1)
+        except Exception:
+            pass
+        wait_for_visible(self.driver, *self.MORE_TAB, timeout=15).click()
 
     def go_to_payment_history(self):
         wait_for_visible(self.driver, *self.PAYMENT_HISTORY).click()

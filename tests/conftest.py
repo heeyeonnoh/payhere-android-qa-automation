@@ -74,45 +74,102 @@ def _deploy_allure_report():
         return None
 
 
-def _check_unrefunded_payments():
-    """결제 내역에서 미환불 거래 확인 (취소 완료 안 된 항목)"""
+def _go_to_payment_history(driver):
+    """더보기 → 결제 내역 이동"""
+    close_any_popup(driver)
+    try:
+        driver.find_element(AppiumBy.ACCESSIBILITY_ID, "더보기").click()
+    except Exception:
+        driver.back()
+        time.sleep(1)
+        driver.find_element(AppiumBy.ACCESSIBILITY_ID, "더보기").click()
+    time.sleep(1)
+    driver.find_element(AppiumBy.ACCESSIBILITY_ID, "결제 내역").click()
+    time.sleep(2)
+
+
+def _get_unrefunded_items(driver):
+    """결제 내역에서 '결제 완료' 상태(미환불) 항목 반환"""
+    return driver.find_elements(
+        AppiumBy.ANDROID_UIAUTOMATOR,
+        'new UiSelector().text("결제 완료")'
+    )
+
+
+def _check_and_refund_unrefunded_payments():
+    """미환불 거래 확인 후 자동 환불 시도. (auto_refunded, still_unrefunded) 반환"""
+    from pages.refund_page import RefundPage
+
     driver = None
+    auto_refunded = []
+    still_unrefunded = []
+
     try:
         driver = create_android_driver()
         time.sleep(3)
-        close_any_popup(driver)
+        _go_to_payment_history(driver)
 
-        try:
-            driver.find_element(AppiumBy.ACCESSIBILITY_ID, "더보기").click()
-        except Exception:
-            driver.back()
-            time.sleep(1)
-            driver.find_element(AppiumBy.ACCESSIBILITY_ID, "더보기").click()
-        time.sleep(1)
+        for _ in range(10):  # 최대 10건
+            items = _get_unrefunded_items(driver)
+            if not items:
+                break
 
-        driver.find_element(AppiumBy.ACCESSIBILITY_ID, "결제 내역").click()
-        time.sleep(2)
+            try:
+                # 클릭 가능한 상위 요소(행) 찾아서 진입
+                row = items[0].find_element(
+                    AppiumBy.XPATH, "ancestor::*[@clickable='true'][1]"
+                )
+                row.click()
+                time.sleep(1.5)
 
-        # "결제 완료" 상태 = 아직 환불 안 된 거래
-        items = driver.find_elements(
-            AppiumBy.ANDROID_UIAUTOMATOR,
-            'new UiSelector().text("결제 완료")'
-        )
+                # 상세 화면에서 금액 읽기 (50,001원 초과 여부)
+                amount_text = ""
+                try:
+                    els = driver.find_elements(
+                        AppiumBy.ANDROID_UIAUTOMATOR,
+                        'new UiSelector().textContains("원")'
+                    )
+                    if els:
+                        amount_text = els[0].text
+                except Exception:
+                    pass
 
-        results = []
-        for item in items:
+                page = RefundPage(driver)
+                page.click_refund_button()
+                page.click_refund_confirm()
+                page.click_refund_final()
+
+                # 50,001원 이상은 서명 필요
+                over_50k = any(x in amount_text.replace(",", "") for x in ["50001", "50002", "50003"])
+                if over_50k:
+                    page.sign_for_refund()
+
+                page.click_refund_success_confirm()
+                driver.back()
+                time.sleep(1)
+                auto_refunded.append(amount_text or "금액 미확인")
+
+            except Exception as e:
+                print(f"자동 환불 실패: {e}")
+                driver.back()
+                time.sleep(1)
+                break
+
+        # 환불 후 남은 미환불 거래 확인
+        for item in _get_unrefunded_items(driver):
             try:
                 parent = item.find_element(AppiumBy.XPATH, "..")
-                siblings = parent.find_elements(AppiumBy.XPATH, ".//*")
-                texts = [s.text for s in siblings if s.text and s.text != "결제 완료"]
-                results.append(" | ".join(texts[:3]) if texts else "거래 정보 없음")
+                texts = [s.text for s in parent.find_elements(AppiumBy.XPATH, ".//*")
+                         if s.text and s.text != "결제 완료"]
+                still_unrefunded.append(" | ".join(texts[:3]) or "거래 정보 없음")
             except Exception:
-                results.append("미환불 거래 발견")
+                still_unrefunded.append("미환불 거래")
 
-        return results
+        return auto_refunded, still_unrefunded
+
     except Exception as e:
-        print(f"환불 확인 실패: {e}")
-        return None
+        print(f"환불 확인/시도 실패: {e}")
+        return auto_refunded, still_unrefunded
     finally:
         if driver:
             try:
@@ -154,7 +211,7 @@ def driver_at_appium_category(driver):
     try:
         ProductFlow(driver).go_to_appium_category()
     except Exception:
-        # 결제 내역 등 하위 화면에 있는 경우 뒤로가기 후 재시도
+        # 하위 화면에 있는 경우 뒤로가기 후 재시도
         driver.back()
         time.sleep(0.5)
         close_any_popup(driver)
@@ -166,6 +223,31 @@ def pytest_addoption(parser):
     parser.addoption("--slack", action="store_true", default=False, help="테스트 결과를 Slack으로 전송")
 
 
+def _extract_failure_reason(longrepr):
+    """traceback에서 실패 단계 + 에러 타입 추출"""
+    try:
+        lines = str(longrepr).strip().split('\n')
+        # 마지막 E 줄에서 에러 타입 추출
+        error_type = ""
+        for line in reversed(lines):
+            s = line.strip()
+            if s.startswith('E '):
+                msg = s.replace('E ', '', 1).strip()
+                error_type = msg.split(':')[0].split('.')[-1]
+                break
+        # 마지막 'in <함수명>' 줄에서 실패 단계 추출
+        step = ""
+        for line in reversed(lines):
+            if ' in ' in line and '.py:' in line:
+                step = line.strip().split(' in ')[-1].strip()
+                break
+        if step and error_type:
+            return f"{step} → {error_type}"
+        return error_type or step or "알 수 없는 오류"
+    except Exception:
+        return "오류 정보 없음"
+
+
 def pytest_runtest_logreport(report):
     if report.when == "call":
         if not hasattr(pytest, "_qa_results"):
@@ -174,12 +256,16 @@ def pytest_runtest_logreport(report):
             pytest._qa_results["passed"] += 1
         elif report.failed:
             pytest._qa_results["failed"] += 1
-            pytest._qa_results["failures"].append(report.nodeid)
+            reason = _extract_failure_reason(report.longrepr)
+            test_name = report.nodeid.split("::")[-1]
+            pytest._qa_results["failures"].append(f"{test_name}\n    → {reason}")
     elif report.when == "setup" and report.failed:
         if not hasattr(pytest, "_qa_results"):
             pytest._qa_results = {"passed": 0, "failed": 0, "error": 0, "failures": [], "start": time.time()}
         pytest._qa_results["error"] += 1
-        pytest._qa_results["failures"].append(report.nodeid)
+        reason = _extract_failure_reason(report.longrepr)
+        test_name = report.nodeid.split("::")[-1]
+        pytest._qa_results["failures"].append(f"{test_name}\n    → (setup) {reason}")
 
 
 def pytest_sessionfinish(session, exitstatus):
@@ -189,6 +275,6 @@ def pytest_sessionfinish(session, exitstatus):
     duration = time.time() - r["start"]
     if session.config.getoption("--slack"):
         report_url = _deploy_allure_report()
-        unrefunded = _check_unrefunded_payments()
-        send_test_results(r["passed"], r["failed"], r["error"], duration, r["failures"], report_url, unrefunded)
+        auto_refunded, still_unrefunded = _check_and_refund_unrefunded_payments()
+        send_test_results(r["passed"], r["failed"], r["error"], duration, r["failures"], report_url, auto_refunded, still_unrefunded)
     del pytest._qa_results
