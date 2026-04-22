@@ -54,10 +54,13 @@ def _deploy_allure_report():
         # 날짜+시간 폴더에 결과 저장
         archive_dir = os.path.join(REPO_DIR, "allure-results", timestamp)
         shutil.copytree(allure_tmp, archive_dir)
-        subprocess.run(
+        result = subprocess.run(
             [sys.executable, "-m", "ghp_import", "-n", "-p", "-f", "allure-report"],
-            check=True, capture_output=True, cwd=REPO_DIR
+            capture_output=True, text=True, cwd=REPO_DIR
         )
+        if result.returncode != 0:
+            print(f"ghp_import 오류: {result.stderr}")
+            raise subprocess.CalledProcessError(result.returncode, "ghp_import")
         # allure-results/{timestamp} + allure-history를 main 브랜치에 커밋 & 푸시
         subprocess.run(["git", "add", f"allure-results/{timestamp}/", "allure-history/"], cwd=REPO_DIR)
         subprocess.run(

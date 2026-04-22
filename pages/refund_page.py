@@ -32,7 +32,8 @@ class RefundPage:
         self.driver = driver
 
     def go_to_more_tab(self):
-        wait_for_visible(self.driver, *self.MORE_TAB).click()
+        time.sleep(3)
+        wait_for_visible(self.driver, *self.MORE_TAB, timeout=20).click()
 
     def go_to_payment_history(self):
         wait_for_visible(self.driver, *self.PAYMENT_HISTORY).click()
