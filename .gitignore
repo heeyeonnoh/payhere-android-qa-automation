@@ -7,4 +7,6 @@ venv/
 .vscode/
 .DS_Store
 .venv/
+allure-tmp/
 allure-report/
+cron.log

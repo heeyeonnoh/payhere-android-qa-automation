@@ -32,24 +32,34 @@ def _get_pages_url():
 
 def _deploy_allure_report():
     try:
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
+        history_store = os.path.join(REPO_DIR, "allure-history")
+        allure_tmp = os.path.join(REPO_DIR, "allure-tmp")
+        # 저장된 히스토리를 allure-tmp/history에 복사 → 트렌드 반영
+        if os.path.exists(history_store):
+            history_for_report = os.path.join(allure_tmp, "history")
+            if os.path.exists(history_for_report):
+                shutil.rmtree(history_for_report)
+            shutil.copytree(history_store, history_for_report)
         subprocess.run(
-            ["allure", "generate", "allure-results", "--clean", "-o", "allure-report"],
+            ["allure", "generate", "allure-tmp", "--clean", "-o", "allure-report"],
             check=True, capture_output=True, cwd=REPO_DIR
         )
-        # 생성된 리포트의 history를 allure-results에 복사 → 다음 실행 시 트렌드 유지
-        history_src = os.path.join(REPO_DIR, "allure-report", "history")
-        history_dst = os.path.join(REPO_DIR, "allure-results", "history")
-        if os.path.exists(history_src):
-            if os.path.exists(history_dst):
-                shutil.rmtree(history_dst)
-            shutil.copytree(history_src, history_dst)
+        # 새 히스토리를 allure-history에 저장 → 다음 실행에 사용
+        new_history = os.path.join(REPO_DIR, "allure-report", "history")
+        if os.path.exists(new_history):
+            if os.path.exists(history_store):
+                shutil.rmtree(history_store)
+            shutil.copytree(new_history, history_store)
+        # 날짜+시간 폴더에 결과 저장
+        archive_dir = os.path.join(REPO_DIR, "allure-results", timestamp)
+        shutil.copytree(allure_tmp, archive_dir)
         subprocess.run(
             [sys.executable, "-m", "ghp_import", "-n", "-p", "-f", "allure-report"],
             check=True, capture_output=True, cwd=REPO_DIR
         )
-        # allure-results(+history)를 main 브랜치에 커밋 & 푸시
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        subprocess.run(["git", "add", "allure-results/"], cwd=REPO_DIR)
+        # allure-results/{timestamp} + allure-history를 main 브랜치에 커밋 & 푸시
+        subprocess.run(["git", "add", f"allure-results/{timestamp}/", "allure-history/"], cwd=REPO_DIR)
         subprocess.run(
             ["git", "commit", "-m", f"test: Allure 결과 저장 ({timestamp})"],
             cwd=REPO_DIR, capture_output=True
