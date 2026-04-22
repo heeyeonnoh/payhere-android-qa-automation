@@ -92,4 +92,4 @@ class PaymentPage:
         wait_for_visible(self.driver, *self.CASH_COMPLETE_BUTTON).click()
 
     def click_confirm_button(self):
-        wait_for_visible(self.driver, *self.CONFIRM_BUTTON).click()
+        wait_for_visible(self.driver, *self.CONFIRM_BUTTON, timeout=30).click()
