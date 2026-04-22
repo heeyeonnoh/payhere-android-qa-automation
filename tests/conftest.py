@@ -74,6 +74,53 @@ def _deploy_allure_report():
         return None
 
 
+def _check_unrefunded_payments():
+    """결제 내역에서 미환불 거래 확인 (취소 완료 안 된 항목)"""
+    driver = None
+    try:
+        driver = create_android_driver()
+        time.sleep(3)
+        close_any_popup(driver)
+
+        try:
+            driver.find_element(AppiumBy.ACCESSIBILITY_ID, "더보기").click()
+        except Exception:
+            driver.back()
+            time.sleep(1)
+            driver.find_element(AppiumBy.ACCESSIBILITY_ID, "더보기").click()
+        time.sleep(1)
+
+        driver.find_element(AppiumBy.ACCESSIBILITY_ID, "결제 내역").click()
+        time.sleep(2)
+
+        # "결제 완료" 상태 = 아직 환불 안 된 거래
+        items = driver.find_elements(
+            AppiumBy.ANDROID_UIAUTOMATOR,
+            'new UiSelector().text("결제 완료")'
+        )
+
+        results = []
+        for item in items:
+            try:
+                parent = item.find_element(AppiumBy.XPATH, "..")
+                siblings = parent.find_elements(AppiumBy.XPATH, ".//*")
+                texts = [s.text for s in siblings if s.text and s.text != "결제 완료"]
+                results.append(" | ".join(texts[:3]) if texts else "거래 정보 없음")
+            except Exception:
+                results.append("미환불 거래 발견")
+
+        return results
+    except Exception as e:
+        print(f"환불 확인 실패: {e}")
+        return None
+    finally:
+        if driver:
+            try:
+                driver.quit()
+            except Exception:
+                pass
+
+
 def close_any_popup(driver):
     """팝업/모달이 있으면 확인 버튼으로 닫기"""
     for locator in [
@@ -142,5 +189,6 @@ def pytest_sessionfinish(session, exitstatus):
     duration = time.time() - r["start"]
     if session.config.getoption("--slack"):
         report_url = _deploy_allure_report()
-        send_test_results(r["passed"], r["failed"], r["error"], duration, r["failures"], report_url)
+        unrefunded = _check_unrefunded_payments()
+        send_test_results(r["passed"], r["failed"], r["error"], duration, r["failures"], report_url, unrefunded)
     del pytest._qa_results
