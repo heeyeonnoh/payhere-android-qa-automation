@@ -2,6 +2,7 @@ from flows.payment_flow import PaymentFlow
 from flows.refund_flow import RefundFlow
 
 
+# ── 카드 일시불 ──────────────────────────────────────────────
 def test_card_payment_under_50k_and_refund(driver_at_appium_category):
     PaymentFlow(driver_at_appium_category).card_under_50k()
     RefundFlow(driver_at_appium_category).refund_latest_payment()
@@ -17,6 +18,18 @@ def test_card_payment_over_50k_and_refund(driver_at_appium_category):
     RefundFlow(driver_at_appium_category).refund_latest_payment_over_50k()
 
 
+# ── 카드 할부 (2개월) ────────────────────────────────────────
+def test_card_payment_50k_installment_and_refund(driver_at_appium_category):
+    PaymentFlow(driver_at_appium_category).card_50k_installment()
+    RefundFlow(driver_at_appium_category).refund_latest_payment_50k()
+
+
+def test_card_payment_over_50k_installment_and_refund(driver_at_appium_category):
+    PaymentFlow(driver_at_appium_category).card_over_50k_installment()
+    RefundFlow(driver_at_appium_category).refund_latest_payment_over_50k()
+
+
+# ── 현금 ────────────────────────────────────────────────────
 def test_cash_payment_under_50k_and_refund(driver_at_appium_category):
     PaymentFlow(driver_at_appium_category).cash_under_50k()
     RefundFlow(driver_at_appium_category).refund_latest_payment()

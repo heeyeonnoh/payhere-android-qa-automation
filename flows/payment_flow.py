@@ -48,6 +48,21 @@ class PaymentFlow:
         self.page.click_cash_complete_button()
         self.page.click_confirm_button()
 
+    # 카드 할부 결제
+    def card_50k_installment(self):
+        self.page.select_50k_product()
+        self.page.click_pay_button()
+        self.page.select_card_payment()
+        self.page.select_installment_2m_and_pay()
+        self.page.click_confirm_button()
+
+    def card_over_50k_installment(self):
+        self.page.select_over_50k_product()
+        self.page.click_pay_button()
+        self.page.select_card_payment()
+        self.page.sign_and_pay_installment()
+        self.page.click_confirm_button()
+
     # 기존 메서드 (호환성)
     def card_payment_under_50k(self):
         self.card_under_50k()

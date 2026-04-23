@@ -22,6 +22,7 @@ class PaymentPage:
 
     # 할부 선택 모달 (5만원 이상)
     INSTALLMENT_LUMP_SUM = (AppiumBy.ACCESSIBILITY_ID, "일시불")
+    INSTALLMENT_2_MONTH = (AppiumBy.ACCESSIBILITY_ID, "2개월")
     INSTALLMENT_PAY_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "결제")
 
     # 서명 (5만원 초과)
@@ -62,16 +63,12 @@ class PaymentPage:
         wait_for_visible(self.driver, *self.INSTALLMENT_LUMP_SUM).click()
         wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON).click()
 
-    def sign_and_pay(self):
-        """서명 후 결제 (5만원 초과)"""
-        # 일시불 선택
-        wait_for_visible(self.driver, *self.INSTALLMENT_LUMP_SUM).click()
+    def select_installment_2m_and_pay(self):
+        """할부 선택 모달에서 2개월 할부 선택 후 결제 (5만원)"""
+        wait_for_visible(self.driver, *self.INSTALLMENT_2_MONTH).click()
+        wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON).click()
 
-        # 셀러앱에서 서명 클릭
-        wait_for_visible(self.driver, *self.SIGN_IN_SELLER_APP).click()
-        time.sleep(0.5)
-
-        # 서명 (터치 액션)
+    def _draw_signature(self):
         actions = ActionChains(self.driver)
         actions.w3c_actions = ActionBuilder(
             self.driver,
@@ -84,7 +81,20 @@ class PaymentPage:
         actions.perform()
         time.sleep(0.5)
 
-        # 결제 버튼 클릭
+    def sign_and_pay(self):
+        """일시불 선택 + 서명 후 결제 (5만원 초과)"""
+        wait_for_visible(self.driver, *self.INSTALLMENT_LUMP_SUM).click()
+        wait_for_visible(self.driver, *self.SIGN_IN_SELLER_APP).click()
+        time.sleep(0.5)
+        self._draw_signature()
+        wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON).click()
+
+    def sign_and_pay_installment(self):
+        """2개월 할부 선택 + 서명 후 결제 (5만원 초과)"""
+        wait_for_visible(self.driver, *self.INSTALLMENT_2_MONTH).click()
+        wait_for_visible(self.driver, *self.SIGN_IN_SELLER_APP).click()
+        time.sleep(0.5)
+        self._draw_signature()
         wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON).click()
 
     def click_cash_complete_button(self):
