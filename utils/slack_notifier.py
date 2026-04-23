@@ -26,17 +26,20 @@ def send_test_results(passed: int, failed: int, error: int, duration: float, fai
         for name in failures:
             lines.append(f"  • {name}")
 
-    if auto_refunded:
-        lines.append(f"\n:arrows_counterclockwise: 자동 환불 완료 {len(auto_refunded)}건:")
-        for item in auto_refunded:
-            lines.append(f"  • {item}")
+    if auto_refunded is None:
+        lines.append("\n:warning: 환불 상태 확인 불가 (기기/Appium 미연결)")
+    else:
+        if auto_refunded:
+            lines.append(f"\n:arrows_counterclockwise: 자동 환불 완료 {len(auto_refunded)}건:")
+            for item in auto_refunded:
+                lines.append(f"  • {item}")
 
-    if still_unrefunded:
-        lines.append(f"\n:rotating_light: 미환불 거래 {len(still_unrefunded)}건 (수동 확인 필요):")
-        for item in still_unrefunded:
-            lines.append(f"  • {item}")
-    elif auto_refunded is not None:
-        lines.append("\n:white_check_mark: 모든 거래 환불 완료")
+        if still_unrefunded:
+            lines.append(f"\n:rotating_light: 미환불 거래 {len(still_unrefunded)}건 (수동 확인 필요):")
+            for item in still_unrefunded:
+                lines.append(f"  • {item}")
+        else:
+            lines.append("\n:white_check_mark: 모든 거래 환불 완료")
 
     if report_url:
         lines.append(f"\n:bar_chart: <{report_url}|Allure 리포트 보기>")

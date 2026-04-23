@@ -106,6 +106,11 @@ def _check_and_refund_unrefunded_payments():
 
     try:
         driver = create_android_driver()
+    except Exception as e:
+        print(f"환불 확인 불가 (기기/Appium 연결 실패): {e}")
+        return None, None  # 기기 없음 → 확인 자체 불가
+
+    try:
         time.sleep(3)
         _go_to_payment_history(driver)
 
@@ -225,9 +230,16 @@ def pytest_addoption(parser):
 
 def _extract_failure_reason(longrepr):
     """traceback에서 실패 단계 + 에러 타입 추출"""
+    text = str(longrepr)
+    # 알려진 인프라 오류 먼저 확인
+    if "연결된 Android 기기가 없습니다" in text:
+        return "Android 기기 미연결"
+    if "Connection refused" in text and "4723" in text:
+        return "Appium 서버 미실행"
+    if "WebDriverException" in text and "4723" in text:
+        return "Appium 서버 연결 실패"
     try:
-        lines = str(longrepr).strip().split('\n')
-        # 마지막 E 줄에서 에러 타입 추출
+        lines = text.strip().split('\n')
         error_type = ""
         for line in reversed(lines):
             s = line.strip()
@@ -235,7 +247,6 @@ def _extract_failure_reason(longrepr):
                 msg = s.replace('E ', '', 1).strip()
                 error_type = msg.split(':')[0].split('.')[-1]
                 break
-        # 마지막 'in <함수명>' 줄에서 실패 단계 추출
         step = ""
         for line in reversed(lines):
             if ' in ' in line and '.py:' in line:
@@ -276,5 +287,22 @@ def pytest_sessionfinish(session, exitstatus):
     if session.config.getoption("--slack"):
         report_url = _deploy_allure_report()
         auto_refunded, still_unrefunded = _check_and_refund_unrefunded_payments()
-        send_test_results(r["passed"], r["failed"], r["error"], duration, r["failures"], report_url, auto_refunded, still_unrefunded)
+        # 동일한 실패 사유가 반복되면 대표 1건 + 나머지 건수로 압축
+        failures = _compress_failures(r["failures"])
+        send_test_results(r["passed"], r["failed"], r["error"], duration, failures, report_url, auto_refunded, still_unrefunded)
     del pytest._qa_results
+
+
+def _compress_failures(failures: list[str]) -> list[str]:
+    """동일 사유 반복 시 압축 (예: 기기 미연결 x6 → 1건으로)"""
+    from collections import Counter
+    # 사유 부분만 추출해서 카운트
+    reasons = []
+    for f in failures:
+        parts = f.split("\n    → ")
+        reasons.append(parts[-1] if len(parts) > 1 else f)
+    reason_counts = Counter(reasons)
+    if len(reason_counts) == 1 and len(failures) > 1:
+        reason = list(reason_counts.keys())[0]
+        return [f"전체 {len(failures)}건 동일 원인: {reason}"]
+    return failures
