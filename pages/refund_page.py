@@ -105,13 +105,15 @@ class RefundPage:
         """5만원 초과 환불 - 카드 환불 화면에서 셀러앱 서명"""
         time.sleep(15)  # IC 카드 화면 → 서명 대기 중 전환 대기 (~12초 소요)
         self.driver.tap([self.SIGN_IN_SELLER_APP_COORDS])
-        time.sleep(1)
+        time.sleep(2)
         self._draw_signature()
         time.sleep(0.5)
-        self.driver.tap([self.REFUND_AFTER_SIGN_COORDS])  # 서명 후 환불 버튼
+        self.driver.tap([self.REFUND_AFTER_SIGN_COORDS])
         time.sleep(1)
 
     def go_back_to_main(self):
-        """환불 후 결제 내역에서 뒤로가기"""
-        self.driver.back()
+        """환불 후 결제 내역 → 더보기 메뉴까지 뒤로가기 (WebView 탈출)"""
+        self.driver.back()  # 결제 상세 → 결제 내역 리스트
+        time.sleep(0.5)
+        self.driver.back()  # 결제 내역 리스트 → 더보기 메뉴 (네이티브)
         time.sleep(0.5)

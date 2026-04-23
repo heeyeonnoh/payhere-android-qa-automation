@@ -64,7 +64,7 @@ class PaymentPage:
         wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON).click()
 
     def select_installment_2m_and_pay(self):
-        """할부 선택 모달에서 2개월 할부 선택 후 결제 (5만원)"""
+        """할부 선택 모달에서 2개월 할부 선택 후 결제 (5만원 - 서명 불필요)"""
         wait_for_visible(self.driver, *self.INSTALLMENT_2_MONTH).click()
         wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON).click()
 

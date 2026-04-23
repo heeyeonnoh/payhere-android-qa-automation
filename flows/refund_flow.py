@@ -17,7 +17,7 @@ class RefundFlow:
         self.page.go_back_to_main()
 
     def refund_latest_payment_50k(self):
-        """가장 최근 결제 환불 (5만원 - 일반 환불)"""
+        """가장 최근 결제 환불 (5만원 일시불 - 서명 불필요)"""
         self.page.go_to_more_tab()
         self.page.go_to_payment_history()
         self.page.select_latest_payment()

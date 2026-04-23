@@ -213,14 +213,19 @@ def driver():
 def driver_at_appium_category(driver):
     """appium 카테고리 화면에서 시작하는 fixture"""
     close_any_popup(driver)
-    try:
-        ProductFlow(driver).go_to_appium_category()
-    except Exception:
-        # 하위 화면에 있는 경우 뒤로가기 후 재시도
-        driver.back()
-        time.sleep(0.5)
-        close_any_popup(driver)
-        ProductFlow(driver).go_to_appium_category()
+    # 이전 테스트가 WebView 서브화면에 남긴 경우 최대 4회 back() 시도
+    for _ in range(4):
+        try:
+            ProductFlow(driver).go_to_appium_category()
+            return driver
+        except Exception:
+            close_any_popup(driver)
+            try:
+                driver.back()
+            except Exception:
+                pass
+            time.sleep(1)
+    ProductFlow(driver).go_to_appium_category()
     return driver
 
 
