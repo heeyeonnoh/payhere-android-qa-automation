@@ -16,7 +16,7 @@ class RefundPage:
 
     # 환불 버튼 (좌표 기반 - WebView 내부)
     REFUND_BUTTON_COORDS = (966, 627)  # 상세 화면의 환불 버튼
-    REFUND_CONFIRM_COORDS = (960, 1044)  # 하단 환불 확인 버튼
+    REFUND_CONFIRM_COORDS = (960, 1108)  # 하단 환불 확인 버튼
     REFUND_FINAL_COORDS = (1162, 735)  # 대화상자 환불 버튼
 
     # 할부 선택 (5만원 환불)
@@ -24,9 +24,9 @@ class RefundPage:
     INSTALLMENT_CONFIRM = (AppiumBy.ACCESSIBILITY_ID, "결제")
 
     # 서명 (5만원 초과 환불) - "카드 환불" 화면 하단 좌측 버튼
-    SIGN_IN_SELLER_APP_COORDS = (670, 1036)
-    REFUND_AFTER_SIGN_COORDS = (1249, 1036)  # 서명 후 활성화되는 "환불" 버튼
-    REFUND_SUCCESS_CONFIRM_COORDS = (960, 1037)  # 취소 완료 모달의 "확인" 버튼
+    SIGN_IN_SELLER_APP_COORDS = (670, 1108)
+    REFUND_AFTER_SIGN_COORDS = (1249, 1108)  # 서명 후 활성화되는 "환불" 버튼
+    REFUND_SUCCESS_CONFIRM_COORDS = (960, 1108)  # 취소 완료 모달의 "확인" 버튼
 
     def __init__(self, driver):
         self.driver = driver
