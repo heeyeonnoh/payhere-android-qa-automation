@@ -22,15 +22,15 @@ class PaymentPage:
 
     # 할부 선택 모달 (5만원 이상)
     INSTALLMENT_LUMP_SUM = (AppiumBy.ACCESSIBILITY_ID, "일시불")
-    INSTALLMENT_DROPDOWN_FIELD = (
+    INSTALLMENT_MONTH_FIELD = (
         AppiumBy.ANDROID_UIAUTOMATOR,
-        'new UiSelector().className("android.widget.EditText").text("할부 개월수를 입력해 주세요.")'
+        'new UiSelector().hintText("할부 개월수를 입력해 주세요.")'
     )
-    INSTALLMENT_DROPDOWN_FIELD_XPATH = (
+    INSTALLMENT_MONTH_FIELD_XPATH = (
         AppiumBy.XPATH,
-        '//android.widget.EditText[@text="할부 개월수를 입력해 주세요."]'
+        '//android.widget.EditText[@hint="할부 개월수를 입력해 주세요."]'
     )
-    INSTALLMENT_DROPDOWN_EDITTEXT = (
+    INSTALLMENT_MONTH_FIELD_CLASSNAME = (
         AppiumBy.CLASS_NAME,
         "android.widget.EditText"
     )
@@ -103,34 +103,14 @@ class PaymentPage:
         return False
 
     def _select_2_month_installment(self):
-        """할부 드롭다운을 열고 2개월을 선택한다."""
-        self._click_first_available(
-            [
-                self.INSTALLMENT_DROPDOWN_FIELD,
-                self.INSTALLMENT_DROPDOWN_FIELD_XPATH,
-                self.INSTALLMENT_DROPDOWN_EDITTEXT,
-                self.INSTALLMENT_LUMP_SUM,
-            ],
-            timeout=10
-        )
-        time.sleep(0.5)
-        try:
-            self._click_first_available(
-                [self.INSTALLMENT_2_MONTH_TEXT, self.INSTALLMENT_2_MONTH],
-                timeout=5
-            )
-        except Exception:
-            self.driver.tap([(480, 815)])
+        """할부 드롭다운 클릭 후 2개월 좌표 탭.
 
-        end_time = time.time() + 5
-        while time.time() < end_time:
-            try:
-                if self.driver.find_elements(*self.INSTALLMENT_SELECTED_2_MONTH):
-                    return
-            except Exception:
-                pass
-            time.sleep(0.3)
-
+        드롭다운 항목이 React Native lazy 렌더링으로 accessibility tree에 노출되지
+        않으므로 좌표로 직접 탭한다. (일시불→직접입력→2개월 순서, 항목 높이 ≈98px)
+        """
+        wait_for_visible(self.driver, *self.INSTALLMENT_LUMP_SUM, timeout=30).click()
+        time.sleep(1)
+        self.driver.tap([(960, 875)])
         time.sleep(0.5)
 
     def select_installment_2m_and_pay(self):

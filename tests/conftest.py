@@ -186,10 +186,11 @@ def _check_and_refund_unrefunded_payments():
 
 
 def close_any_popup(driver):
-    """팝업/모달이 있으면 확인 버튼으로 닫기"""
+    """팝업/모달이 있으면 닫기 (확인 또는 취소)"""
     for locator in [
         (AppiumBy.ACCESSIBILITY_ID, "확인"),
         (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("확인")'),
+        (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("취소")'),
     ]:
         try:
             driver.find_element(*locator).click()
@@ -226,13 +227,26 @@ def recover_to_home(driver):
         pass
 
     close_any_popup(driver)
-    for _ in range(3):
+    for _ in range(6):
         close_blocking_modal(driver)
+        try:
+            driver.hide_keyboard()
+        except Exception:
+            pass
         try:
             driver.back()
         except Exception:
             break
         time.sleep(0.7)
+
+    # 상품 탭 직접 클릭 시도
+    for _ in range(2):
+        try:
+            driver.find_element(AppiumBy.ACCESSIBILITY_ID, "상품").click()
+            time.sleep(1)
+            return
+        except Exception:
+            time.sleep(1)
 
 
 @pytest.fixture
@@ -244,7 +258,10 @@ def driver():
 
     yield driver
 
-    driver.quit()
+    try:
+        driver.quit()
+    except Exception:
+        pass
 
 
 @pytest.fixture

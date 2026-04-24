@@ -11,3 +11,11 @@ def test_card_payment_50k(driver_at_appium_category):
 
 def test_card_payment_over_50k(driver_at_appium_category):
     PaymentFlow(driver_at_appium_category).card_over_50k()
+
+
+def test_card_payment_50k_installment_2m(driver_at_appium_category):
+    PaymentFlow(driver_at_appium_category).card_50k_installment()
+
+
+def test_card_payment_over_50k_installment_2m(driver_at_appium_category):
+    PaymentFlow(driver_at_appium_category).card_over_50k_installment()
