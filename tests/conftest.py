@@ -8,11 +8,13 @@ from datetime import datetime
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import WebDriverException
 from driver.appium_driver import create_android_driver
 from flows.product_flow import ProductFlow
 from utils.slack_notifier import send_test_results
 
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+APP_PACKAGE = "in.payhere.prd"
 
 
 def _get_pages_url():
@@ -215,6 +217,24 @@ def close_blocking_modal(driver):
     return False
 
 
+def recover_to_home(driver):
+    """앱을 전면으로 가져오고 홈 탭 복귀를 시도한다."""
+    try:
+        driver.activate_app(APP_PACKAGE)
+        time.sleep(2)
+    except Exception:
+        pass
+
+    close_any_popup(driver)
+    for _ in range(3):
+        close_blocking_modal(driver)
+        try:
+            driver.back()
+        except Exception:
+            break
+        time.sleep(0.7)
+
+
 @pytest.fixture
 def driver():
     """테스트 전: 드라이버 생성 / 테스트 후: 드라이버 종료"""
@@ -228,7 +248,7 @@ def driver():
 
 
 @pytest.fixture
-def driver_at_appium_category(driver):
+def driver_at_appium_category(driver, request):
     """appium 카테고리 화면에서 시작하는 fixture"""
     close_any_popup(driver)
     # 이전 테스트가 WebView 서브화면에 남긴 경우 최대 4회 back() 시도
@@ -237,9 +257,19 @@ def driver_at_appium_category(driver):
             close_blocking_modal(driver)
             ProductFlow(driver).go_to_appium_category()
             return driver
+        except WebDriverException:
+            try:
+                driver.quit()
+            except Exception:
+                pass
+            driver = create_android_driver()
+            request.addfinalizer(lambda d=driver: d.quit())
+            close_any_popup(driver)
+            recover_to_home(driver)
         except Exception:
             close_any_popup(driver)
             close_blocking_modal(driver)
+            recover_to_home(driver)
             try:
                 driver.back()
             except Exception:

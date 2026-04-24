@@ -22,11 +22,33 @@ class PaymentPage:
 
     # 할부 선택 모달 (5만원 이상)
     INSTALLMENT_LUMP_SUM = (AppiumBy.ACCESSIBILITY_ID, "일시불")
+    INSTALLMENT_DROPDOWN_FIELD = (
+        AppiumBy.ANDROID_UIAUTOMATOR,
+        'new UiSelector().className("android.widget.EditText").text("할부 개월수를 입력해 주세요.")'
+    )
+    INSTALLMENT_DROPDOWN_FIELD_XPATH = (
+        AppiumBy.XPATH,
+        '//android.widget.EditText[@text="할부 개월수를 입력해 주세요."]'
+    )
+    INSTALLMENT_DROPDOWN_EDITTEXT = (
+        AppiumBy.CLASS_NAME,
+        "android.widget.EditText"
+    )
     INSTALLMENT_2_MONTH = (AppiumBy.ACCESSIBILITY_ID, "2개월")
+    INSTALLMENT_2_MONTH_TEXT = (
+        AppiumBy.ANDROID_UIAUTOMATOR,
+        'new UiSelector().text("2개월")'
+    )
     INSTALLMENT_PAY_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "결제")
+    INSTALLMENT_SELECTED_2_MONTH = (AppiumBy.ACCESSIBILITY_ID, "2개월")
+    INSTALLMENT_PAY_BUTTON_COORDS = (960, 1044)
 
     # 서명 (5만원 초과)
     SIGN_IN_SELLER_APP = (AppiumBy.ACCESSIBILITY_ID, "셀러앱에서 서명")
+    SIGN_IN_SELLER_APP_DESC = (
+        AppiumBy.ANDROID_UIAUTOMATOR,
+        'new UiSelector().description("셀러앱에서 서명")'
+    )
 
     # 현금 결제 완료 버튼
     CASH_COMPLETE_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "결제 완료")
@@ -63,20 +85,61 @@ class PaymentPage:
         wait_for_visible(self.driver, *self.INSTALLMENT_LUMP_SUM).click()
         wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON).click()
 
+    def _click_first_available(self, locators, timeout=10):
+        end_time = time.time() + timeout
+        last_error = None
+
+        while time.time() < end_time:
+            for locator in locators:
+                try:
+                    self.driver.find_element(*locator).click()
+                    return True
+                except Exception as e:
+                    last_error = e
+            time.sleep(0.5)
+
+        if last_error:
+            raise last_error
+        return False
+
     def _select_2_month_installment(self):
         """할부 드롭다운을 열고 2개월을 선택한다."""
-        wait_for_visible(self.driver, *self.INSTALLMENT_LUMP_SUM).click()
+        self._click_first_available(
+            [
+                self.INSTALLMENT_DROPDOWN_FIELD,
+                self.INSTALLMENT_DROPDOWN_FIELD_XPATH,
+                self.INSTALLMENT_DROPDOWN_EDITTEXT,
+                self.INSTALLMENT_LUMP_SUM,
+            ],
+            timeout=10
+        )
         time.sleep(0.5)
         try:
-            self.driver.find_element(*self.INSTALLMENT_2_MONTH).click()
+            self._click_first_available(
+                [self.INSTALLMENT_2_MONTH_TEXT, self.INSTALLMENT_2_MONTH],
+                timeout=5
+            )
         except Exception:
             self.driver.tap([(480, 815)])
+
+        end_time = time.time() + 5
+        while time.time() < end_time:
+            try:
+                if self.driver.find_elements(*self.INSTALLMENT_SELECTED_2_MONTH):
+                    return
+            except Exception:
+                pass
+            time.sleep(0.3)
+
         time.sleep(0.5)
 
     def select_installment_2m_and_pay(self):
         """할부 선택 모달에서 2개월 할부 선택 후 결제 (5만원 - 서명 불필요)"""
         self._select_2_month_installment()
-        wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON).click()
+        try:
+            wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON, timeout=5).click()
+        except Exception:
+            self.driver.tap([self.INSTALLMENT_PAY_BUTTON_COORDS])
 
     def _draw_signature(self):
         actions = ActionChains(self.driver)
@@ -102,10 +165,16 @@ class PaymentPage:
     def sign_and_pay_installment(self):
         """2개월 할부 선택 + 서명 후 결제 (5만원 초과)"""
         self._select_2_month_installment()
-        wait_for_visible(self.driver, *self.SIGN_IN_SELLER_APP).click()
+        self._click_first_available(
+            [self.SIGN_IN_SELLER_APP, self.SIGN_IN_SELLER_APP_DESC],
+            timeout=15
+        )
         time.sleep(0.5)
         self._draw_signature()
-        wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON).click()
+        try:
+            wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON, timeout=5).click()
+        except Exception:
+            self.driver.tap([self.INSTALLMENT_PAY_BUTTON_COORDS])
 
     def click_cash_complete_button(self):
         """현금 결제 완료 버튼 클릭"""
