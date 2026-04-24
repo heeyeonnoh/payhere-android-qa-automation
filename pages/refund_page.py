@@ -16,17 +16,30 @@ class RefundPage:
 
     # 환불 버튼 (좌표 기반 - WebView 내부)
     REFUND_BUTTON_COORDS = (966, 627)  # 상세 화면의 환불 버튼
-    REFUND_CONFIRM_COORDS = (960, 1108)  # 하단 환불 확인 버튼
+    REFUND_CONFIRM_COORDS = (960, 1044)  # 하단 환불 확인 버튼
     REFUND_FINAL_COORDS = (1162, 735)  # 대화상자 환불 버튼
 
     # 할부 선택 (5만원 환불)
     INSTALLMENT_LUMP_SUM = (AppiumBy.ACCESSIBILITY_ID, "일시불")
     INSTALLMENT_CONFIRM = (AppiumBy.ACCESSIBILITY_ID, "결제")
 
-    # 서명 (5만원 초과 환불) - "카드 환불" 화면 하단 좌측 버튼
-    SIGN_IN_SELLER_APP_COORDS = (670, 1108)
-    REFUND_AFTER_SIGN_COORDS = (1249, 1108)  # 서명 후 활성화되는 "환불" 버튼
-    REFUND_SUCCESS_CONFIRM_COORDS = (960, 1108)  # 취소 완료 모달의 "확인" 버튼
+    # 서명 (5만원 초과 환불)
+    CARD_REFUND_TITLE = (
+        AppiumBy.ANDROID_UIAUTOMATOR,
+        'new UiSelector().text("카드 환불")'
+    )
+    SIGN_IN_SELLER_APP = (AppiumBy.ACCESSIBILITY_ID, "셀러앱에서 서명")
+    WAITING_FOR_SIGNATURE_TEXT = (
+        AppiumBy.ANDROID_UIAUTOMATOR,
+        'new UiSelector().text("서명 대기 중")'
+    )
+    SIGNATURE_GUIDE_TEXT = (
+        AppiumBy.ANDROID_UIAUTOMATOR,
+        'new UiSelector().text("서명해 주세요.")'
+    )
+    REFUND_AFTER_SIGN = (AppiumBy.ACCESSIBILITY_ID, "환불")
+    REFUND_AFTER_SIGN_COORDS = (1249, 1036)  # 서명 후 활성화되는 "환불" 버튼
+    REFUND_SUCCESS_CONFIRM_COORDS = (960, 1044)  # 취소 완료 모달의 "확인" 버튼
 
     def __init__(self, driver):
         self.driver = driver
@@ -101,14 +114,80 @@ class RefundPage:
         actions.perform()
         time.sleep(0.5)
 
+    def _draw_refund_signature(self):
+        """카드 환불 모달의 서명 패드 영역에 직접 서명한다."""
+        actions = ActionChains(self.driver)
+        actions.w3c_actions = ActionBuilder(
+            self.driver,
+            mouse=PointerInput(interaction.POINTER_TOUCH, "touch")
+        )
+        actions.w3c_actions.pointer_action.move_to_location(560, 620)
+        actions.w3c_actions.pointer_action.pointer_down()
+        actions.w3c_actions.pointer_action.move_to_location(820, 720)
+        actions.w3c_actions.pointer_action.move_to_location(1100, 560)
+        actions.w3c_actions.pointer_action.move_to_location(1380, 700)
+        actions.w3c_actions.pointer_action.pointer_up()
+        actions.perform()
+        time.sleep(0.5)
+
+    def _click_first_available(self, locators, timeout=20):
+        """여러 locator 중 먼저 보이는 요소 클릭. WebView/모달 차이를 흡수한다."""
+        end_time = time.time() + timeout
+        last_error = None
+
+        while time.time() < end_time:
+            for locator in locators:
+                try:
+                    self.driver.find_element(*locator).click()
+                    return True
+                except Exception as e:
+                    last_error = e
+            time.sleep(0.5)
+
+        if last_error:
+            raise last_error
+        return False
+
+    def _is_any_visible(self, locators):
+        for locator in locators:
+            try:
+                elements = self.driver.find_elements(*locator)
+                if any(element.is_displayed() for element in elements):
+                    return locator
+            except Exception:
+                pass
+        return None
+
     def sign_for_refund(self):
         """5만원 초과 환불 - 카드 환불 화면에서 셀러앱 서명"""
-        time.sleep(15)  # IC 카드 화면 → 서명 대기 중 전환 대기 (~12초 소요)
-        self.driver.tap([self.SIGN_IN_SELLER_APP_COORDS])
-        time.sleep(2)
-        self._draw_signature()
+        # 최종 환불 이후 카드 환불 모달이 늦게 뜰 수 있어 제목부터 안정적으로 기다린다.
+        wait_for_visible(self.driver, *self.CARD_REFUND_TITLE, timeout=25)
+
+        state_locators = [
+            self.SIGNATURE_GUIDE_TEXT,
+            self.WAITING_FOR_SIGNATURE_TEXT,
+            self.SIGN_IN_SELLER_APP,
+        ]
+        visible_state = None
+        end_time = time.time() + 25
+        while time.time() < end_time and visible_state is None:
+            visible_state = self._is_any_visible(state_locators)
+            if visible_state is None:
+                time.sleep(0.5)
+
+        if visible_state == self.SIGN_IN_SELLER_APP or visible_state == self.WAITING_FOR_SIGNATURE_TEXT:
+            wait_for_visible(self.driver, *self.SIGN_IN_SELLER_APP, timeout=10).click()
+            wait_for_visible(self.driver, *self.SIGNATURE_GUIDE_TEXT, timeout=10)
+        elif visible_state != self.SIGNATURE_GUIDE_TEXT:
+            raise TimeoutError("카드 환불 서명 상태를 확인하지 못했습니다.")
+
+        self._draw_refund_signature()
         time.sleep(0.5)
-        self.driver.tap([self.REFUND_AFTER_SIGN_COORDS])
+
+        try:
+            self._click_first_available([self.REFUND_AFTER_SIGN], timeout=5)
+        except Exception:
+            self.driver.tap([self.REFUND_AFTER_SIGN_COORDS])
         time.sleep(1)
 
     def go_back_to_main(self):

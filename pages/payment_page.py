@@ -63,9 +63,19 @@ class PaymentPage:
         wait_for_visible(self.driver, *self.INSTALLMENT_LUMP_SUM).click()
         wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON).click()
 
+    def _select_2_month_installment(self):
+        """할부 드롭다운을 열고 2개월을 선택한다."""
+        wait_for_visible(self.driver, *self.INSTALLMENT_LUMP_SUM).click()
+        time.sleep(0.5)
+        try:
+            self.driver.find_element(*self.INSTALLMENT_2_MONTH).click()
+        except Exception:
+            self.driver.tap([(480, 815)])
+        time.sleep(0.5)
+
     def select_installment_2m_and_pay(self):
         """할부 선택 모달에서 2개월 할부 선택 후 결제 (5만원 - 서명 불필요)"""
-        wait_for_visible(self.driver, *self.INSTALLMENT_2_MONTH).click()
+        self._select_2_month_installment()
         wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON).click()
 
     def _draw_signature(self):
@@ -91,7 +101,7 @@ class PaymentPage:
 
     def sign_and_pay_installment(self):
         """2개월 할부 선택 + 서명 후 결제 (5만원 초과)"""
-        wait_for_visible(self.driver, *self.INSTALLMENT_2_MONTH).click()
+        self._select_2_month_installment()
         wait_for_visible(self.driver, *self.SIGN_IN_SELLER_APP).click()
         time.sleep(0.5)
         self._draw_signature()

@@ -197,6 +197,24 @@ def close_any_popup(driver):
             pass
 
 
+def close_blocking_modal(driver):
+    """결제/환불 모달이 남아 있으면 우상단 닫기 버튼으로 정리"""
+    modal_titles = ["카드 결제", "현금 결제", "카드 환불"]
+    for title in modal_titles:
+        try:
+            driver.find_element(
+                AppiumBy.ANDROID_UIAUTOMATOR,
+                f'new UiSelector().text("{title}")'
+            )
+            driver.tap([(1525, 50)])
+            time.sleep(1)
+            close_any_popup(driver)
+            return True
+        except Exception:
+            pass
+    return False
+
+
 @pytest.fixture
 def driver():
     """테스트 전: 드라이버 생성 / 테스트 후: 드라이버 종료"""
@@ -214,12 +232,14 @@ def driver_at_appium_category(driver):
     """appium 카테고리 화면에서 시작하는 fixture"""
     close_any_popup(driver)
     # 이전 테스트가 WebView 서브화면에 남긴 경우 최대 4회 back() 시도
-    for _ in range(4):
+    for _ in range(6):
         try:
+            close_blocking_modal(driver)
             ProductFlow(driver).go_to_appium_category()
             return driver
         except Exception:
             close_any_popup(driver)
+            close_blocking_modal(driver)
             try:
                 driver.back()
             except Exception:
