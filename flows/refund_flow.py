@@ -1,4 +1,5 @@
 from pages.refund_page import RefundPage
+from pages.cash_receipt_page import CashReceiptPage
 
 
 class RefundFlow:
@@ -25,6 +26,17 @@ class RefundFlow:
         self.page.click_refund_confirm()
         self.page.click_refund_final()
         self.page.click_refund_success_confirm()
+        self.page.go_back_to_main()
+
+    def refund_with_cash_receipt(self, phone="01012345678"):
+        """현금영수증 발급된 현금 결제 환불 (현금 결제 취소 화면에서 번호 입력)"""
+        self.page.go_to_more_tab()
+        self.page.go_to_payment_history()
+        self.page.select_latest_payment()
+        self.page.click_refund_button()
+        self.page.click_refund_confirm()
+        self.page.click_refund_final()
+        CashReceiptPage(self.page.driver).cancel_receipt(phone)
         self.page.go_back_to_main()
 
     def refund_latest_payment_over_50k(self):

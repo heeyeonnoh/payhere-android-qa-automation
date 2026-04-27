@@ -1,4 +1,5 @@
 from pages.payment_page import PaymentPage
+from pages.cash_receipt_page import CashReceiptPage
 
 
 class PaymentFlow:
@@ -62,6 +63,14 @@ class PaymentFlow:
         self.page.select_card_payment()
         self.page.sign_and_pay_installment()
         self.page.click_confirm_button()
+
+    # 현금 결제 + 현금영수증 발급
+    def cash_under_50k_with_receipt(self, phone="01012345678"):
+        self.page.select_under_50k_product()
+        self.page.click_pay_button()
+        self.page.select_cash_payment()
+        self.page.click_cash_complete_button()
+        CashReceiptPage(self.page.driver).issue_receipt(phone)
 
     # 기존 메서드 (호환성)
     def card_payment_under_50k(self):
