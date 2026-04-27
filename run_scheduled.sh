@@ -11,4 +11,4 @@ if ! curl -s http://localhost:4723/status > /dev/null 2>&1; then
 fi
 
 source .venv/bin/activate
-python3 -m pytest tests/test_refund.py -v --slack
+python3 -m pytest tests/test_refund.py tests/test_cash_receipt.py -v --slack
