@@ -24,9 +24,13 @@ def _get_pages_url():
             capture_output=True, text=True, cwd=REPO_DIR
         )
         url = result.stdout.strip()
-        # https://github.com/owner/repo.git → https://owner.github.io/repo/
-        url = url.replace("https://github.com/", "").replace(".git", "")
-        owner, repo = url.split("/")
+        # SSH:   git@github.com:owner/repo.git → owner/repo
+        # HTTPS: https://github.com/owner/repo.git → owner/repo
+        if url.startswith("git@github.com:"):
+            path = url.replace("git@github.com:", "").replace(".git", "")
+        else:
+            path = url.replace("https://github.com/", "").replace(".git", "")
+        owner, repo = path.split("/")
         return f"https://{owner}.github.io/{repo}/"
     except Exception:
         return None
