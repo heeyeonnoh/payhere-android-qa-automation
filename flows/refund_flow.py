@@ -29,7 +29,7 @@ class RefundFlow:
         self.page.go_back_to_main()
 
     def refund_with_cash_receipt(self, phone="01012345678"):
-        """현금영수증 발급된 현금 결제 환불 (현금 결제 취소 화면에서 번호 입력)"""
+        """현금영수증 발급된 현금 결제 환불 (개인 영수증 번호 입력 후 발급 취소)"""
         self.page.go_to_more_tab()
         self.page.go_to_payment_history()
         self.page.select_latest_payment()
@@ -37,6 +37,17 @@ class RefundFlow:
         self.page.click_refund_confirm()
         self.page.click_refund_final()
         CashReceiptPage(self.page.driver).cancel_receipt(phone)
+        self.page.go_back_to_main()
+
+    def refund_with_business_receipt(self, business_number="1234567890"):
+        """사업자 현금영수증 발급된 현금 결제 환불 (사업자 번호 입력 후 발급 취소)"""
+        self.page.go_to_more_tab()
+        self.page.go_to_payment_history()
+        self.page.select_latest_payment()
+        self.page.click_refund_button()
+        self.page.click_refund_confirm()
+        self.page.click_refund_final()
+        CashReceiptPage(self.page.driver).cancel_business_receipt(business_number)
         self.page.go_back_to_main()
 
     def refund_latest_payment_over_50k(self):

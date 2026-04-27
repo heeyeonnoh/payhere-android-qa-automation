@@ -72,6 +72,13 @@ class PaymentFlow:
         self.page.click_cash_complete_button()
         CashReceiptPage(self.page.driver).issue_receipt(phone)
 
+    def cash_under_50k_with_business_receipt(self, business_number="1234567890"):
+        self.page.select_under_50k_product()
+        self.page.click_pay_button()
+        self.page.select_cash_payment()
+        self.page.click_cash_complete_button()
+        CashReceiptPage(self.page.driver).issue_business_receipt(business_number)
+
     # 기존 메서드 (호환성)
     def card_payment_under_50k(self):
         self.card_under_50k()

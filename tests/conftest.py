@@ -295,7 +295,12 @@ def driver_at_appium_category(driver, request):
             except Exception:
                 pass
             driver = create_android_driver()
-            request.addfinalizer(lambda d=driver: d.quit())
+            def _safe_quit(d=driver):
+                try:
+                    d.quit()
+                except Exception:
+                    pass
+            request.addfinalizer(_safe_quit)
             close_any_popup(driver)
             recover_to_home(driver)
         except Exception:
