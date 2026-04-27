@@ -33,7 +33,9 @@ def _get_pages_url():
 
 
 def _deploy_allure_report():
+    step = "init"
     try:
+        step = "allure generate"
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
         history_store = os.path.join(REPO_DIR, "allure-history")
         allure_tmp = os.path.join(REPO_DIR, "allure-tmp")
@@ -43,10 +45,12 @@ def _deploy_allure_report():
             if os.path.exists(history_for_report):
                 shutil.rmtree(history_for_report)
             shutil.copytree(history_store, history_for_report)
-        subprocess.run(
+        r = subprocess.run(
             ["allure", "generate", "allure-tmp", "--clean", "-o", "allure-report"],
-            check=True, capture_output=True, cwd=REPO_DIR
+            capture_output=True, cwd=REPO_DIR
         )
+        if r.returncode != 0:
+            raise RuntimeError(f"allure generate 실패: {r.stderr.decode(errors='ignore')[:200]}")
         # 새 히스토리를 allure-history에 저장 → 다음 실행에 사용
         new_history = os.path.join(REPO_DIR, "allure-report", "history")
         if os.path.exists(new_history):
@@ -54,26 +58,33 @@ def _deploy_allure_report():
                 shutil.rmtree(history_store)
             shutil.copytree(new_history, history_store)
         # 날짜+시간 폴더에 결과 저장
+        step = "archive"
         archive_dir = os.path.join(REPO_DIR, "allure-results", timestamp)
+        if os.path.exists(archive_dir):
+            shutil.rmtree(archive_dir)
         shutil.copytree(allure_tmp, archive_dir)
+        step = "ghp_import"
         result = subprocess.run(
             [sys.executable, "-m", "ghp_import", "-n", "-p", "-f", "allure-report"],
             capture_output=True, text=True, cwd=REPO_DIR
         )
         if result.returncode != 0:
-            print(f"ghp_import 오류: {result.stderr}")
-            raise subprocess.CalledProcessError(result.returncode, "ghp_import")
+            raise RuntimeError(f"ghp_import 실패: {result.stderr[:200]}")
         # allure-results/{timestamp} + allure-history를 main 브랜치에 커밋 & 푸시
+        step = "git push"
+        subprocess.run(["git", "pull", "--rebase", "origin", "main"],
+                       cwd=REPO_DIR, capture_output=True)
         subprocess.run(["git", "add", f"allure-results/{timestamp}/", "allure-history/"], cwd=REPO_DIR)
         subprocess.run(
             ["git", "commit", "-m", f"test: Allure 결과 저장 ({timestamp})"],
             cwd=REPO_DIR, capture_output=True
         )
         subprocess.run(["git", "push", "origin", "main"], cwd=REPO_DIR, capture_output=True)
-        return _get_pages_url()
+        return _get_pages_url(), None
     except Exception as e:
-        print(f"Allure 배포 실패: {e}")
-        return None
+        err = f"[{step}] {e}"
+        print(f"Allure 배포 실패: {err}")
+        return None, err
 
 
 def _go_to_payment_history(driver):
@@ -357,11 +368,11 @@ def pytest_sessionfinish(session, exitstatus):
     r = pytest._qa_results
     duration = time.time() - r["start"]
     if session.config.getoption("--slack"):
-        report_url = _deploy_allure_report()
+        report_url, deploy_error = _deploy_allure_report()
         auto_refunded, still_unrefunded = _check_and_refund_unrefunded_payments()
         # 동일한 실패 사유가 반복되면 대표 1건 + 나머지 건수로 압축
         failures = _compress_failures(r["failures"])
-        send_test_results(r["passed"], r["failed"], r["error"], duration, failures, report_url, auto_refunded, still_unrefunded)
+        send_test_results(r["passed"], r["failed"], r["error"], duration, failures, report_url, auto_refunded, still_unrefunded, deploy_error)
     del pytest._qa_results
 
 

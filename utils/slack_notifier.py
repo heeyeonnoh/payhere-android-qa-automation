@@ -9,7 +9,7 @@ load_dotenv()
 WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
 
 
-def send_test_results(passed: int, failed: int, error: int, duration: float, failures: list[str], report_url: str = None, auto_refunded: list[str] = None, still_unrefunded: list[str] = None):
+def send_test_results(passed: int, failed: int, error: int, duration: float, failures: list[str], report_url: str = None, auto_refunded: list[str] = None, still_unrefunded: list[str] = None, deploy_error: str = None):
     total = passed + failed + error
     status = "SUCCESS" if failed == 0 and error == 0 else "FAILURE"
 
@@ -43,6 +43,8 @@ def send_test_results(passed: int, failed: int, error: int, duration: float, fai
 
     if report_url:
         lines.append(f"\n:bar_chart: <{report_url}|Allure 리포트 보기>")
+    elif deploy_error:
+        lines.append(f"\n:warning: Allure 배포 실패: {deploy_error}")
 
     payload = {"text": "\n".join(lines)}
     data = json.dumps(payload).encode("utf-8")
