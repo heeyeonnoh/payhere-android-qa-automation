@@ -2,6 +2,7 @@ from pages.payment_page import PaymentPage
 from pages.cash_receipt_page import CashReceiptPage
 from pages.discount_coupon_page import DiscountCouponPage
 from pages.points_page import PointsPage
+from pages.split_payment_page import SplitPaymentPage
 
 
 class PaymentFlow:
@@ -153,6 +154,32 @@ class PaymentFlow:
         PointsPage(self.page.driver).apply_points(phone_last4, points)
         self.page.select_cash_payment()
         self.page.click_cash_complete_button()
+        self.page.click_confirm_button()
+
+    # 분할결제 — 직접 입력 (현금 → 카드)
+    def split_cash_card(self, split_amount: str = "500"):
+        """분할결제(직접 입력): 첫 번째 현금, 두 번째 카드"""
+        self.page.select_under_50k_product()
+        self.page.click_pay_button()
+        sp = SplitPaymentPage(self.page.driver)
+        sp.open_direct_split(split_amount)
+        self.page.select_cash_payment()
+        self.page.click_cash_complete_button()
+        sp.continue_direct_split()
+        self.page.select_card_payment()
+        self.page.click_confirm_button()
+
+    # 더치페이 — 2명 균등 (현금 → 카드)
+    def dutch_pay_cash_card(self):
+        """더치페이 2명: 첫 번째 현금, 두 번째 카드"""
+        self.page.select_under_50k_product()
+        self.page.click_pay_button()
+        sp = SplitPaymentPage(self.page.driver)
+        sp.open_dutch_pay()
+        self.page.select_cash_payment()
+        self.page.click_cash_complete_button()
+        sp.continue_dutch_pay()
+        self.page.select_card_payment()
         self.page.click_confirm_button()
 
     # 기존 메서드 (호환성)
