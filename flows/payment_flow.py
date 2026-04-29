@@ -1,5 +1,7 @@
 from pages.payment_page import PaymentPage
 from pages.cash_receipt_page import CashReceiptPage
+from pages.discount_coupon_page import DiscountCouponPage
+from pages.points_page import PointsPage
 
 
 class PaymentFlow:
@@ -111,6 +113,44 @@ class PaymentFlow:
         self.page.enter_unit_qty(qty)
         self.page.click_apply_button()
         self.page.click_pay_button()
+        self.page.select_cash_payment()
+        self.page.click_cash_complete_button()
+        self.page.click_confirm_button()
+
+    # 쿠폰 결제 (5만원 상품 기준 — 1,000원 쿠폰 적용 후 49,000원)
+    def card_50k_with_coupon(self, phone_last4: str = "7745"):
+        self.page.select_50k_product()
+        self.page.click_pay_button()
+        self.page.click_discount_coupon_button()
+        DiscountCouponPage(self.page.driver).apply_coupon(phone_last4)
+        self.page.select_card_payment()
+        self.page.try_select_installment_and_pay()
+        self.page.click_confirm_button()
+
+    def cash_50k_with_coupon(self, phone_last4: str = "7745"):
+        self.page.select_50k_product()
+        self.page.click_pay_button()
+        self.page.click_discount_coupon_button()
+        DiscountCouponPage(self.page.driver).apply_coupon(phone_last4)
+        self.page.select_cash_payment()
+        self.page.click_cash_complete_button()
+        self.page.click_confirm_button()
+
+    # 포인트 결제 (5만원 상품 기준 — 1,000P 차감 후 49,000원)
+    def card_50k_with_points(self, phone_last4: str = "7745", points: str = "1000"):
+        self.page.select_50k_product()
+        self.page.click_pay_button()
+        self.page.click_points_button()
+        PointsPage(self.page.driver).apply_points(phone_last4, points)
+        self.page.select_card_payment()
+        self.page.try_select_installment_and_pay()
+        self.page.click_confirm_button()
+
+    def cash_50k_with_points(self, phone_last4: str = "7745", points: str = "1000"):
+        self.page.select_50k_product()
+        self.page.click_pay_button()
+        self.page.click_points_button()
+        PointsPage(self.page.driver).apply_points(phone_last4, points)
         self.page.select_cash_payment()
         self.page.click_cash_complete_button()
         self.page.click_confirm_button()

@@ -66,6 +66,10 @@ class PaymentPage:
     # 현금 결제 완료 버튼
     CASH_COMPLETE_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "결제 완료")
 
+    # 할인/포인트 버튼
+    DISCOUNT_COUPON_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "할인/쿠폰")
+    POINTS_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "포인트/회원권")
+
     # 결제 완료 확인 버튼
     CONFIRM_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "확인")
 
@@ -200,6 +204,23 @@ class PaymentPage:
     def click_cash_complete_button(self):
         """현금 결제 완료 버튼 클릭"""
         wait_for_visible(self.driver, *self.CASH_COMPLETE_BUTTON).click()
+
+    def try_select_installment_and_pay(self, timeout: int = 4):
+        """할부 선택 모달이 나타나면 일시불 선택 후 결제. 없으면 조용히 스킵."""
+        try:
+            wait_for_visible(self.driver, *self.INSTALLMENT_LUMP_SUM, timeout=timeout).click()
+            try:
+                wait_for_visible(self.driver, *self.INSTALLMENT_PAY_BUTTON, timeout=timeout).click()
+            except Exception:
+                self.driver.tap([self.INSTALLMENT_PAY_BUTTON_COORDS])
+        except Exception:
+            pass
+
+    def click_discount_coupon_button(self):
+        wait_for_visible(self.driver, *self.DISCOUNT_COUPON_BUTTON).click()
+
+    def click_points_button(self):
+        wait_for_visible(self.driver, *self.POINTS_BUTTON).click()
 
     def click_confirm_button(self):
         wait_for_visible(self.driver, *self.CONFIRM_BUTTON, timeout=30).click()
