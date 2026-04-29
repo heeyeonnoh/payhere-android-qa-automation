@@ -9,7 +9,7 @@ class CashReceiptPage:
     ISSUE_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "발급")
     CANCEL_ISSUE_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "발급 취소")
     CONFIRM_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "확인")
-    BUSINESS_TAB = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("사업자 (지출증빙)")')
+    BUSINESS_TAB = (AppiumBy.ACCESSIBILITY_ID, "사업자 (지출증빙)")
 
     # 오른쪽 숫자 키패드 device 좌표 (1920×1200 기준)
     KEYPAD = {
@@ -33,6 +33,7 @@ class CashReceiptPage:
     def issue_receipt(self, phone="01012345678"):
         """결제 완료 화면에서 개인 현금영수증 발급 후 확인"""
         wait_for_visible(self.driver, *self.CASH_RECEIPT_BUTTON).click()
+        time.sleep(3)
         self._enter_number(phone)
         wait_for_visible(self.driver, *self.ISSUE_BUTTON).click()
         time.sleep(1)
@@ -41,6 +42,7 @@ class CashReceiptPage:
     def issue_business_receipt(self, business_number="1234567890"):
         """결제 완료 화면에서 사업자 현금영수증 발급 후 확인"""
         wait_for_visible(self.driver, *self.CASH_RECEIPT_BUTTON).click()
+        time.sleep(3)
         wait_for_visible(self.driver, *self.BUSINESS_TAB).click()
         time.sleep(0.5)
         self._enter_number(business_number)

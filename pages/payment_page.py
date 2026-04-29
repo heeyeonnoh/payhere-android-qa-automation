@@ -12,6 +12,19 @@ class PaymentPage:
     UNDER_50K_PRODUCT = (AppiumBy.ACCESSIBILITY_ID, "5만원 미만, 1,000원")
     PRODUCT_50K = (AppiumBy.ACCESSIBILITY_ID, "5만원, 50,000원")
     OVER_50K_PRODUCT = (AppiumBy.ACCESSIBILITY_ID, "5만원 이상, 50,001원")
+    MARKET_PRICE_PRODUCT = (AppiumBy.ACCESSIBILITY_ID, "시가, 시가")
+    UNIT_PRODUCT = (AppiumBy.ACCESSIBILITY_ID, "단위, 단위")
+
+    # 시가/단위 입력 후 적용
+    APPLY_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "적용")
+
+    # 오른쪽 숫자 키패드 좌표 (1920×1200 기준)
+    INPUT_KEYPAD = {
+        '1': (1273, 266), '2': (1440, 266), '3': (1606, 266),
+        '4': (1273, 440), '5': (1440, 440), '6': (1606, 440),
+        '7': (1273, 614), '8': (1440, 614), '9': (1606, 614),
+        '0': (1440, 787), 'C': (1273, 787), '.': (1273, 787),
+    }
 
     # 결제 버튼 (동적 - 텍스트에 "결제" 포함)
     PAY_BUTTON = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().textContains("결제")')
@@ -68,6 +81,34 @@ class PaymentPage:
 
     def select_over_50k_product(self):
         wait_for_visible(self.driver, *self.OVER_50K_PRODUCT).click()
+
+    def select_market_price_product(self):
+        wait_for_visible(self.driver, *self.MARKET_PRICE_PRODUCT).click()
+        time.sleep(0.5)
+
+    def select_unit_product(self):
+        wait_for_visible(self.driver, *self.UNIT_PRODUCT).click()
+        time.sleep(0.5)
+
+    def enter_market_price(self, price: str):
+        """시가 입력 모달에서 오른쪽 키패드로 가격 입력 (기본값 0 클리어 후 입력)"""
+        self.driver.tap([(1273, 787)])  # C
+        time.sleep(0.3)
+        for digit in price:
+            x, y = self.INPUT_KEYPAD[digit]
+            self.driver.tap([(x, y)])
+            time.sleep(0.2)
+
+    def enter_unit_qty(self, qty: str):
+        """단위 입력 모달에서 오른쪽 키패드로 총량 입력"""
+        for ch in qty:
+            x, y = self.INPUT_KEYPAD[ch]
+            self.driver.tap([(x, y)])
+            time.sleep(0.2)
+
+    def click_apply_button(self):
+        wait_for_visible(self.driver, *self.APPLY_BUTTON).click()
+        time.sleep(0.5)
 
     # 결제 버튼
     def click_pay_button(self):
