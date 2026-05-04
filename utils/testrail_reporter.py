@@ -68,15 +68,30 @@ def _api(method: str, path: str, body: dict = None):
         return json.loads(r.read().decode("utf-8", errors="replace"))
 
 
+def _get_run_case_ids(run_id: int) -> set[int]:
+    """해당 run에 포함된 case_id 목록을 반환"""
+    tests = _api("GET", f"get_tests/{run_id}")
+    # API 응답이 {"tests": [...]} 형태이거나 바로 리스트일 수 있음
+    if isinstance(tests, dict):
+        tests = tests.get("tests", [])
+    return {t["case_id"] for t in tests}
+
+
 def report_results(run_id: int, test_results: dict[str, bool], failure_reasons: dict[str, str]):
     """주어진 run_id에 테스트 결과 업데이트.
+    run에 포함된 case_id만 업로드하고, 없는 케이스는 경고 후 스킵한다.
     한 case_id에 여러 테스트가 매핑된 경우, 하나라도 실패하면 Failed."""
+    run_case_ids = _get_run_case_ids(run_id)
+
     case_status: dict[int, int] = {}
     case_comments: dict[int, list[str]] = {}
 
     for test_name, passed in test_results.items():
         case_id = CASE_MAP.get(test_name)
         if case_id is None:
+            continue
+        if case_id not in run_case_ids:
+            print(f"  ⚠️  C{case_id} ({test_name}) → Run {run_id}에 없음, 스킵")
             continue
         if case_id not in case_status:
             case_status[case_id] = STATUS_PASSED
@@ -90,7 +105,7 @@ def report_results(run_id: int, test_results: dict[str, bool], failure_reasons: 
             case_comments[case_id].append(f"✅ {test_name}")
 
     if not case_status:
-        print("업데이트할 케이스 없음 (매핑된 테스트 결과 없음)")
+        print("업데이트할 케이스 없음 (매핑된 테스트 결과 없음 또는 run에 포함된 케이스 없음)")
         return
 
     results = [
