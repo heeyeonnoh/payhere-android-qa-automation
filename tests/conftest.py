@@ -105,16 +105,53 @@ def _go_to_payment_history(driver):
     time.sleep(2)
 
 
-def _get_unrefunded_items(driver):
-    """결제 내역에서 '결제 완료' 상태(미환불) 항목 반환"""
-    return driver.find_elements(
-        AppiumBy.ANDROID_UIAUTOMATOR,
-        'new UiSelector().text("결제 완료")'
+def _get_unrefunded_list_items(driver):
+    """결제 목록 왼쪽 패널에서 미환불 항목 반환.
+    환불된 항목은 '환불' 뱃지 + '#번호', 미환불 항목은 '현금'/'카드' 텍스트만 표시됨."""
+    result = []
+    for method in ("현금", "카드"):
+        els = driver.find_elements(
+            AppiumBy.ANDROID_UIAUTOMATOR,
+            f'new UiSelector().text("{method}")'
+        )
+        for el in els:
+            if el.location["x"] < 100:
+                result.append(el)
+    result.sort(key=lambda el: el.location["y"])
+    return result
+
+
+def _get_detail_refund_info(driver):
+    """상세 패널에서 현재 선택된 결제가 미환불인지 확인하고 (is_unrefunded, is_card, amount_text) 반환"""
+    # "환불된 금액0원" 텍스트가 있으면 아직 한 번도 환불 안 된 상태
+    is_unrefunded = bool(
+        driver.find_elements(AppiumBy.XPATH, '//*[contains(@text, "환불된 금액0원")]')
     )
+    if not is_unrefunded:
+        return False, False, ""
+
+    all_texts = [e.text for e in driver.find_elements(AppiumBy.XPATH, "//*[@text!='']") if e.text.strip()]
+    full_text = " ".join(all_texts)
+
+    is_card = "카드" in full_text
+    # "합계X원" 혹은 "원" 포함 토큰 중 숫자가 있는 첫 번째 값
+    amount_text = ""
+    for t in all_texts:
+        if "합계" in t and "원" in t:
+            amount_text = t.replace("합계", "").strip()
+            break
+    if not amount_text:
+        for t in all_texts:
+            candidate = t.strip()
+            if candidate.endswith("원") and any(c.isdigit() for c in candidate):
+                amount_text = candidate
+                break
+
+    return True, is_card, amount_text
 
 
 def _check_and_refund_unrefunded_payments():
-    """미환불 거래 확인 후 자동 환불 시도. (auto_refunded, still_unrefunded) 반환"""
+    """최신 10건 결제 내역을 확인하고 미환불 거래 자동 환불 시도. (auto_refunded, still_unrefunded) 반환"""
     from pages.refund_page import RefundPage
 
     driver = None
@@ -125,67 +162,83 @@ def _check_and_refund_unrefunded_payments():
         driver = create_android_driver()
     except Exception as e:
         print(f"환불 확인 불가 (기기/Appium 연결 실패): {e}")
-        return None, None  # 기기 없음 → 확인 자체 불가
+        return None, None
 
     try:
         time.sleep(3)
-        _go_to_payment_history(driver)
+        # WebView 컨텍스트에 갇혀 있으면 NATIVE_APP으로 전환
+        if driver.current_context != "NATIVE_APP":
+            driver.switch_to.context("NATIVE_APP")
+        # 네이티브 화면("더보기" 탭)이 보일 때까지 back()으로 탈출
+        for _ in range(5):
+            if driver.find_elements(AppiumBy.ACCESSIBILITY_ID, "더보기"):
+                break
+            driver.back()
+            time.sleep(2)
+        page = RefundPage(driver)
+
+        page.go_to_more_tab()
+        page.go_to_payment_history()
+        time.sleep(3)
 
         for _ in range(10):  # 최대 10건
-            items = _get_unrefunded_items(driver)
-            if not items:
+            unrefunded_els = _get_unrefunded_list_items(driver)
+            if not unrefunded_els:
+                break
+
+            unrefunded_els[0].click()
+            time.sleep(1.5)
+
+            is_unrefunded, is_card, amount_text = _get_detail_refund_info(driver)
+            if not is_unrefunded:
                 break
 
             try:
-                # 클릭 가능한 상위 요소(행) 찾아서 진입
-                row = items[0].find_element(
-                    AppiumBy.XPATH, "ancestor::*[@clickable='true'][1]"
-                )
-                row.click()
-                time.sleep(1.5)
+                over_50k = int(amount_text.replace(",", "").replace("원", "").strip()) > 50000
+            except ValueError:
+                over_50k = False
 
-                # 상세 화면에서 금액 읽기 (50,001원 초과 여부)
-                amount_text = ""
-                try:
-                    els = driver.find_elements(
-                        AppiumBy.ANDROID_UIAUTOMATOR,
-                        'new UiSelector().textContains("원")'
-                    )
-                    if els:
-                        amount_text = els[0].text
-                except Exception:
-                    pass
-
-                page = RefundPage(driver)
+            try:
                 page.click_refund_button()
                 page.click_refund_confirm()
                 page.click_refund_final()
 
-                # 50,001원 이상은 서명 필요
-                over_50k = any(x in amount_text.replace(",", "") for x in ["50001", "50002", "50003"])
-                if over_50k:
+                if is_card and over_50k:
                     page.sign_for_refund()
 
                 page.click_refund_success_confirm()
-                driver.back()
                 time.sleep(1)
-                auto_refunded.append(amount_text or "금액 미확인")
+                label = f"{'카드' if is_card else '현금'} {amount_text or '금액 미확인'}"
+                auto_refunded.append(label)
+                print(f"자동 환불 완료: {label}")
 
             except Exception as e:
                 print(f"자동 환불 실패: {e}")
-                driver.back()
-                time.sleep(1)
-                break
+                for _ in range(5):
+                    if driver.find_elements(AppiumBy.ACCESSIBILITY_ID, "더보기"):
+                        break
+                    driver.back()
+                    time.sleep(2)
+                page.go_to_more_tab()
+                page.go_to_payment_history()
+                time.sleep(3)
 
-        # 환불 후 남은 미환불 거래 확인
-        for item in _get_unrefunded_items(driver):
-            try:
-                parent = item.find_element(AppiumBy.XPATH, "..")
-                texts = [s.text for s in parent.find_elements(AppiumBy.XPATH, ".//*")
-                         if s.text and s.text != "결제 완료"]
-                still_unrefunded.append(" | ".join(texts[:3]) or "거래 정보 없음")
-            except Exception:
-                still_unrefunded.append("미환불 거래")
+        # 재확인
+        for _ in range(5):
+            if driver.find_elements(AppiumBy.ACCESSIBILITY_ID, "더보기"):
+                break
+            driver.back()
+            time.sleep(2)
+        page.go_to_more_tab()
+        page.go_to_payment_history()
+        time.sleep(3)
+        for el in _get_unrefunded_list_items(driver):
+            el.click()
+            time.sleep(1.5)
+            is_unrefunded, is_card, amount_text = _get_detail_refund_info(driver)
+            if is_unrefunded:
+                label = f"{'카드' if is_card else '현금'} {amount_text or '금액 미확인'}"
+                still_unrefunded.append(label)
 
         return auto_refunded, still_unrefunded
 
