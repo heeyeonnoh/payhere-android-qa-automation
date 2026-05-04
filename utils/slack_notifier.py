@@ -18,7 +18,7 @@ def send_test_results(passed: int, failed: int, error: int, duration: float, fai
         "──────────────────",
         f":calendar: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         f":white_check_mark: 성공 {passed} / :x: 실패 {failed + error} / 전체 {total}",
-        f":stopwatch: 소요시간: {duration:.1f}초",
+        f":stopwatch: 소요시간: {int(duration) // 60}분 {int(duration) % 60}초" if duration >= 60 else f":stopwatch: 소요시간: {int(duration)}초",
     ]
 
     if failures:
