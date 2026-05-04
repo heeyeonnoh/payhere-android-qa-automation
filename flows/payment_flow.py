@@ -181,6 +181,21 @@ class PaymentFlow:
         self.page.select_card_payment()
         self.page.click_confirm_button()
 
+    def split_card_card_card(self, split_amount: str = "500"):
+        """분할결제(직접 입력): 첫 번째 카드, 두 번째 카드, 세 번째 카드"""
+        self.page.select_50k_product()
+        self.page.click_pay_button()
+        sp = SplitPaymentPage(self.page.driver)
+        sp.open_direct_split(split_amount)
+        self.page.select_card_payment()
+        self.page.try_select_installment_and_pay()
+        sp.continue_direct_split(split_amount)
+        self.page.select_card_payment()
+        self.page.try_select_installment_and_pay()
+        sp.continue_direct_split()
+        self.page.select_card_payment()
+        self.page.click_confirm_button()
+
     # 더치페이 — 2명 균등 (현금 → 카드)
     def dutch_pay_cash_card(self):
         """더치페이 2명: 첫 번째 현금, 두 번째 카드"""

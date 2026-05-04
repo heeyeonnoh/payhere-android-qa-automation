@@ -38,6 +38,7 @@ CASE_MAP: dict[str, int] = {
     # 분할결제
     "test_split_cash_card_and_refund": 301933,
     "test_split_card_card_and_refund": 301932,
+    "test_split_card_card_card_and_refund": 301932,
     # 더치페이
     "test_dutch_pay_cash_card_and_refund": 301920,
     # 쿠폰
