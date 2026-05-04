@@ -1,3 +1,4 @@
+import time
 from pages.refund_page import RefundPage
 from pages.cash_receipt_page import CashReceiptPage
 
@@ -60,4 +61,22 @@ class RefundFlow:
         self.page.click_refund_final()
         self.page.sign_for_refund()
         self.page.click_refund_success_confirm()
+        self.page.go_back_to_main()
+
+    def refund_split_dutch_payments(self):
+        """분할결제/더치페이: 최신(2번째 슬롯) 환불 후, 남은 1번째 슬롯도 환불"""
+        self.page.go_to_more_tab()
+        self.page.go_to_payment_history()
+        self.page.select_latest_payment()
+        self.page.click_refund_button()
+        self.page.click_refund_confirm()
+        self.page.click_refund_final()
+        self.page.click_refund_success_confirm()
+        self.page.go_to_payment_history_fresh()
+        if self.page.select_first_unrefunded_payment():
+            self.page.wait_for_refund_detail_loaded()
+            self.page.click_refund_button()
+            self.page.click_refund_confirm()
+            self.page.click_refund_final()
+            self.page.click_refund_success_confirm()
         self.page.go_back_to_main()

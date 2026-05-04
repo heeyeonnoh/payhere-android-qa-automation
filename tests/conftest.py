@@ -195,9 +195,12 @@ def _check_and_refund_unrefunded_payments():
                 break
 
             unrefunded_els[0].click()
-            time.sleep(1.5)
+            time.sleep(3)
 
             is_unrefunded, is_card, amount_text = _get_detail_refund_info(driver)
+            if not is_unrefunded:
+                time.sleep(2)
+                is_unrefunded, is_card, amount_text = _get_detail_refund_info(driver)
             if not is_unrefunded:
                 continue
 

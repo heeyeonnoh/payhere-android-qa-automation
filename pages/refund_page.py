@@ -44,6 +44,17 @@ class RefundPage:
     def __init__(self, driver):
         self.driver = driver
 
+    def go_to_payment_history_fresh(self):
+        """현재 화면에서 back()으로 WebView 탈출 후 결제 내역 진입"""
+        for _ in range(5):
+            if self.driver.find_elements(AppiumBy.ACCESSIBILITY_ID, "더보기"):
+                break
+            self.driver.back()
+            time.sleep(2)
+        self.go_to_more_tab()
+        self.go_to_payment_history()
+        time.sleep(3)
+
     def go_to_more_tab(self):
         time.sleep(2)
         # 결제 완료 모달의 "확인" 버튼이 남아있으면 클릭
@@ -56,6 +67,33 @@ class RefundPage:
 
     def go_to_payment_history(self):
         wait_for_visible(self.driver, *self.PAYMENT_HISTORY).click()
+
+    def wait_for_refund_detail_loaded(self, timeout: int = 10):
+        """상세 패널에 '환불된 금액' 텍스트가 나타날 때까지 대기 (미환불 상세 로드 확인)"""
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
+        try:
+            WebDriverWait(self.driver, timeout).until(
+                EC.presence_of_element_located(
+                    (AppiumBy.XPATH, '//*[contains(@text, "환불된 금액")]')
+                )
+            )
+        except Exception:
+            time.sleep(3)
+
+    def select_first_unrefunded_payment(self):
+        """결제 목록에서 미환불 항목(현금/카드 뱃지, x<100) 첫 번째 선택. 있으면 True 반환."""
+        time.sleep(1)
+        for method in ("현금", "카드"):
+            els = self.driver.find_elements(
+                AppiumBy.ANDROID_UIAUTOMATOR,
+                f'new UiSelector().text("{method}")'
+            )
+            for el in els:
+                if el.location["x"] < 100:
+                    el.click()
+                    return True
+        return False
 
     def select_latest_payment(self):
         """가장 최근 결제 내역 선택 (첫 번째 항목)"""
