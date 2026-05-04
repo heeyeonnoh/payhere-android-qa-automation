@@ -177,11 +177,19 @@ def _check_and_refund_unrefunded_payments():
             time.sleep(2)
         page = RefundPage(driver)
 
-        page.go_to_more_tab()
-        page.go_to_payment_history()
-        time.sleep(3)
+        def _go_to_payment_history_fresh():
+            for _ in range(5):
+                if driver.find_elements(AppiumBy.ACCESSIBILITY_ID, "더보기"):
+                    break
+                driver.back()
+                time.sleep(2)
+            page.go_to_more_tab()
+            page.go_to_payment_history()
+            time.sleep(3)
 
         for _ in range(10):  # 최대 10건
+            _go_to_payment_history_fresh()
+
             unrefunded_els = _get_unrefunded_list_items(driver)
             if not unrefunded_els:
                 break
@@ -191,7 +199,7 @@ def _check_and_refund_unrefunded_payments():
 
             is_unrefunded, is_card, amount_text = _get_detail_refund_info(driver)
             if not is_unrefunded:
-                break
+                continue
 
             try:
                 over_50k = int(amount_text.replace(",", "").replace("원", "").strip()) > 50000
@@ -214,24 +222,9 @@ def _check_and_refund_unrefunded_payments():
 
             except Exception as e:
                 print(f"자동 환불 실패: {e}")
-                for _ in range(5):
-                    if driver.find_elements(AppiumBy.ACCESSIBILITY_ID, "더보기"):
-                        break
-                    driver.back()
-                    time.sleep(2)
-                page.go_to_more_tab()
-                page.go_to_payment_history()
-                time.sleep(3)
 
         # 재확인
-        for _ in range(5):
-            if driver.find_elements(AppiumBy.ACCESSIBILITY_ID, "더보기"):
-                break
-            driver.back()
-            time.sleep(2)
-        page.go_to_more_tab()
-        page.go_to_payment_history()
-        time.sleep(3)
+        _go_to_payment_history_fresh()
         for el in _get_unrefunded_list_items(driver):
             el.click()
             time.sleep(1.5)
