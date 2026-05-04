@@ -364,6 +364,7 @@ def driver_at_appium_category(driver, request):
 
 def pytest_addoption(parser):
     parser.addoption("--slack", action="store_true", default=False, help="테스트 결과를 Slack으로 전송")
+    parser.addoption("--testrail", action="store_true", default=False, help="테스트 결과를 TestRail에 업데이트")
 
 
 def _extract_failure_reason(longrepr):
@@ -398,23 +399,31 @@ def _extract_failure_reason(longrepr):
 
 
 def pytest_runtest_logreport(report):
+    if not hasattr(pytest, "_qa_results"):
+        pytest._qa_results = {
+            "passed": 0, "failed": 0, "error": 0,
+            "failures": [], "start": time.time(),
+            "test_results": {}, "failure_reasons": {},
+        }
+    r = pytest._qa_results
+    test_name = report.nodeid.split("::")[-1]
+
     if report.when == "call":
-        if not hasattr(pytest, "_qa_results"):
-            pytest._qa_results = {"passed": 0, "failed": 0, "error": 0, "failures": [], "start": time.time()}
         if report.passed:
-            pytest._qa_results["passed"] += 1
+            r["passed"] += 1
+            r["test_results"][test_name] = True
         elif report.failed:
-            pytest._qa_results["failed"] += 1
+            r["failed"] += 1
             reason = _extract_failure_reason(report.longrepr)
-            test_name = report.nodeid.split("::")[-1]
-            pytest._qa_results["failures"].append(f"{test_name}\n    → {reason}")
+            r["failures"].append(f"{test_name}\n    → {reason}")
+            r["test_results"][test_name] = False
+            r["failure_reasons"][test_name] = reason
     elif report.when == "setup" and report.failed:
-        if not hasattr(pytest, "_qa_results"):
-            pytest._qa_results = {"passed": 0, "failed": 0, "error": 0, "failures": [], "start": time.time()}
-        pytest._qa_results["error"] += 1
+        r["error"] += 1
         reason = _extract_failure_reason(report.longrepr)
-        test_name = report.nodeid.split("::")[-1]
-        pytest._qa_results["failures"].append(f"{test_name}\n    → (setup) {reason}")
+        r["failures"].append(f"{test_name}\n    → (setup) {reason}")
+        r["test_results"][test_name] = False
+        r["failure_reasons"][test_name] = f"(setup) {reason}"
 
 
 def pytest_sessionfinish(session, exitstatus):
@@ -425,9 +434,16 @@ def pytest_sessionfinish(session, exitstatus):
     if session.config.getoption("--slack"):
         report_url, deploy_error = _deploy_allure_report()
         auto_refunded, still_unrefunded = _check_and_refund_unrefunded_payments()
-        # 동일한 실패 사유가 반복되면 대표 1건 + 나머지 건수로 압축
         failures = _compress_failures(r["failures"])
         send_test_results(r["passed"], r["failed"], r["error"], duration, failures, report_url, auto_refunded, still_unrefunded, deploy_error)
+    if session.config.getoption("--testrail"):
+        try:
+            from utils.testrail_reporter import create_run, report_results
+            run_id = create_run()
+            report_results(run_id, r["test_results"], r["failure_reasons"])
+            print(f"\nTestRail 업데이트 완료 (Run ID: {run_id})")
+        except Exception as e:
+            print(f"\nTestRail 업데이트 실패: {e}")
     del pytest._qa_results
 
 
