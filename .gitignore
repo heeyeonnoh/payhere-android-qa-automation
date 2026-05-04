@@ -10,3 +10,5 @@ venv/
 allure-tmp/
 allure-report/
 cron.log
+.mcp.json
+last_test_results.json

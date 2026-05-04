@@ -364,7 +364,6 @@ def driver_at_appium_category(driver, request):
 
 def pytest_addoption(parser):
     parser.addoption("--slack", action="store_true", default=False, help="테스트 결과를 Slack으로 전송")
-    parser.addoption("--testrail", action="store_true", default=False, help="테스트 결과를 TestRail에 업데이트")
 
 
 def _extract_failure_reason(longrepr):
@@ -431,19 +430,25 @@ def pytest_sessionfinish(session, exitstatus):
         return
     r = pytest._qa_results
     duration = time.time() - r["start"]
+
+    # 마지막 실행 결과를 JSON으로 저장 (TestRail 업데이트 요청 시 사용)
+    import json as _json
+    result_path = os.path.join(REPO_DIR, "last_test_results.json")
+    try:
+        with open(result_path, "w", encoding="utf-8") as f:
+            _json.dump({
+                "test_results": r["test_results"],
+                "failure_reasons": r["failure_reasons"],
+                "run_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"결과 저장 실패: {e}")
+
     if session.config.getoption("--slack"):
         report_url, deploy_error = _deploy_allure_report()
         auto_refunded, still_unrefunded = _check_and_refund_unrefunded_payments()
         failures = _compress_failures(r["failures"])
         send_test_results(r["passed"], r["failed"], r["error"], duration, failures, report_url, auto_refunded, still_unrefunded, deploy_error)
-    if session.config.getoption("--testrail"):
-        try:
-            from utils.testrail_reporter import create_run, report_results
-            run_id = create_run()
-            report_results(run_id, r["test_results"], r["failure_reasons"])
-            print(f"\nTestRail 업데이트 완료 (Run ID: {run_id})")
-        except Exception as e:
-            print(f"\nTestRail 업데이트 실패: {e}")
     del pytest._qa_results
 
 
